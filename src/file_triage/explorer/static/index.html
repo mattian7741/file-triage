@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Explorer — File Triage</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="header">
+    <span class="title">Explorer</span>
+    <nav class="breadcrumb" id="breadcrumb"></nav>
+    <label class="trash-toggle" id="trashToggle">
+      <input type="checkbox" id="hideTrashCheckbox" />
+      <span id="trashToggleLabel">Show trashed</span>
+    </label>
+    <label class="trash-toggle" id="nullTagsToggle">
+      <input type="checkbox" id="showNullTagsCheckbox" />
+      <span id="nullTagsToggleLabel">Show null tags</span>
+    </label>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="files-section">
+        <div class="files-section-title">VOLUMES</div>
+        <div class="tree" id="tree"></div>
+      </div>
+      <div class="sidebar-divider visible"></div>
+      <div class="rules-section" id="rulesSection"></div>
+      <div class="sidebar-divider visible"></div>
+      <div class="search-section" id="searchSection">
+        <div class="search-section-title">SEARCH</div>
+        <div class="tags-search-wrap" id="searchWrap"></div>
+      </div>
+      <div class="sidebar-divider" id="sidebarDivider"></div>
+      <div class="tags-section" id="tagsSection"></div>
+    </aside>
+    <main class="content">
+      <div class="selection-bar" id="selectionBar">
+        <span class="selection-count" id="selectionCount"></span>
+        <input type="text" class="tag-input batch-tag-input" id="batchTagInput" placeholder="Tag name" size="16" />
+        <button type="button" class="btn" id="btnBatchTag">Add tag to selected</button>
+        <button type="button" class="btn btn-ghost" id="btnClearSelection">Clear</button>
+      </div>
+      <div class="main-split">
+        <div class="folder-panes-wrap">
+          <div class="folder-pane folder-pane-left">
+            <div class="folder-section-title">FOLDER</div>
+            <div class="toolbar">
+              <button type="button" class="btn" id="btnUpLeft" title="Up">↑ Up</button>
+              <span class="current-path" id="currentPathLeft"></span>
+              <button type="button" class="btn btn-add-folder" id="btnAddFolderLeft" title="New folder">New Folder</button>
+            </div>
+            <div class="dropzone" id="dropzoneLeft" title="Drop here to move into this folder">Drop here to move into this folder</div>
+            <div class="listing" id="listingLeft"></div>
+          </div>
+          <div class="folder-pane folder-pane-right">
+            <div class="folder-section-title">FOLDER</div>
+            <div class="toolbar">
+              <button type="button" class="btn" id="btnUpRight" title="Up">↑ Up</button>
+              <span class="current-path" id="currentPathRight"></span>
+              <button type="button" class="btn btn-add-folder" id="btnAddFolderRight" title="New folder">New Folder</button>
+            </div>
+            <div class="dropzone" id="dropzoneRight" title="Drop here to move into this folder">Drop here to move into this folder</div>
+            <div class="listing" id="listingRight"></div>
+          </div>
+        </div>
+        <aside class="preview-pane" id="previewPane">
+          <div class="preview-section">
+            <div class="preview-header">
+              <span class="preview-header-title">Preview</span>
+              <button type="button" class="preview-toggle" id="previewToggle" title="Collapse preview" aria-label="Collapse preview">▶</button>
+            </div>
+            <div class="preview-body" id="previewBody"></div>
+            <div class="preview-footer" id="previewFooter"></div>
+          </div>
+          <div class="console-section">
+            <div class="console-header">CONSOLE</div>
+            <div class="console-body" id="consoleBody"></div>
+          </div>
+          <div class="changes-section">
+            <div class="changes-header">CHANGES</div>
+            <div class="changes-body" id="changesBody"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

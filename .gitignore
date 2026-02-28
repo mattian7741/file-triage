@@ -1,0 +1,31 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE / OS
+.venv
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Local/generated
+file-triage.db
+*.dot
+*.pdf
+.python-version
+
+# Setuptools / build
+*.egg-info/
+*.egg
+
+# Optional: uncomment if you want to track .python-version
+# !.python-version

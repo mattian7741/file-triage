@@ -1,0 +1,4 @@
+# File Triage — dependencies
+# Add more as you build (e.g. rich for progress, watchdog for live scan)
+click>=8.0
+flask>=3.0

@@ -21,7 +21,7 @@ This plan aligns the file-triage codebase with **AA_ADDENDUM_06_DEVELOPMENT_STAN
 
 ---
 
-## Iteration 1: API contract and error envelope (boundary discipline)
+## Iteration 1: API contract and error envelope (boundary discipline) ✅
 
 **Goal:** Define a single, stable contract at the HTTP boundary and use it everywhere.
 

@@ -53,6 +53,7 @@
   var currentSearchMode = "matches";  // "matches" | "contains" when in tag search
   let previewPaneCollapsed = false;
   let hiddenTagSet = new Set();
+  let draggedFromPane = null;  // "left" | "right" while drag in progress; used to remove scope tag when moving out of TS
   let tagsInCurrentView = new Set();
   var lastViewData = null;  // { type: 'listing'|'tagged'|'tag-search', path?: string, tag?: string, mode?: string, entries: array }
   var lastViewDataLeft = null;
@@ -148,9 +149,18 @@
     return "";
   }
 
-  function filterEntriesByVisibility(entries, currentPath) {
+  function filterEntriesByVisibility(entries, currentPath, viewContext) {
     return (entries || []).filter(function (e) {
       var eff = getEffectiveTagsFromEntry(e);
+      // When viewing "tagged" list for a specific tag, show entries that have that tag in effective set
+      if (viewContext && viewContext.type === "tagged" && viewContext.tag) {
+        if (eff.indexOf(viewContext.tag) >= 0) return true;
+        if (!showNullTags && (e.tags_null || []).indexOf(viewContext.tag) >= 0) return false;
+      }
+      if (viewContext && viewContext.type === "tag-search" && viewContext.tag) {
+        if (eff.indexOf(viewContext.tag) >= 0) return true;
+        if (!showNullTags && (e.tags_null || []).indexOf(viewContext.tag) >= 0) return false;
+      }
       if (e.vpath) {
         if (e.display_style === "original" && !showTrashed) return false;
         if (currentPath != null && currentPath !== "") {
@@ -223,7 +233,7 @@
       toggleTreeExpand(path, nodeEl);
       return;
     }
-    fetchJson("listing?path=" + encodeURIComponent(path || "/") + hideTagsParam())
+    fetchJson("listing?path=" + encodeURIComponent(path || "/"))
       .then(function (data) {
         const dirs = (data.entries || []).filter(function (e) { return e.is_dir; });
         if (!treeState[key]) treeState[key] = { expanded: false, children: [] };
@@ -321,7 +331,7 @@
       rulesSectionEl.appendChild(rulesListWrap);
     }
     buildTreeRec(treeEl, "/", "Macintosh HD", 0);
-    fetchJson("listing?path=" + encodeURIComponent("/Volumes") + hideTagsParam())
+    fetchJson("listing?path=" + encodeURIComponent("/Volumes"))
       .then(function (data) {
         var dirs = (data.entries || []).filter(function (e) {
           if (!e.is_dir) return false;
@@ -623,29 +633,23 @@
     currentTag = tag;
     showRulesView = false;
     if (tag) {
+      var scopePath = currentPath || (roots.length ? roots[0] : "") || "/";
+      if (typeof scopePath !== "string") scopePath = "/";
+      if (scopePath !== "/" && scopePath.endsWith("/")) scopePath = scopePath.replace(/\/+$/, "");
       if (isTagSearchView) {
-        var scope = currentPath || (roots.length ? roots[0] : "") || "/";
-        if (currentPathLeftEl) currentPathLeftEl.textContent = scope + " >> " + (currentSearchMode === "contains" ? "contains" : "matches") + " tag:" + tag;
-        if (currentPathRightEl) currentPathRightEl.textContent = scope + " >> " + (currentSearchMode === "contains" ? "contains" : "matches") + " tag:" + tag;
+        var query = (currentSearchMode === "contains" ? "contains:" : "matches:") + tag;
+        var pathDisplay = scopePath + "/?" + query;
+        if (currentPathLeftEl) currentPathLeftEl.textContent = pathDisplay;
+        if (currentPathRightEl) currentPathRightEl.textContent = currentPathRight || "/";
+        buildBreadcrumbForScope(scopePath, "?" + query);
       } else {
-        if (currentPathLeftEl) currentPathLeftEl.textContent = "Tag: " + tag;
-        if (currentPathRightEl) currentPathRightEl.textContent = "Tag: " + tag;
+        var pathDisplayTag = scopePath + "/#" + tag;
+        if (currentPathLeftEl) currentPathLeftEl.textContent = pathDisplayTag;
+        if (currentPathRightEl) currentPathRightEl.textContent = currentPathRight || "/";
+        buildBreadcrumbForScope(scopePath, "#" + tag);
       }
       if (btnUpLeft) btnUpLeft.disabled = false;
       if (btnUpRight) btnUpRight.disabled = false;
-      breadcrumbEl.innerHTML = "";
-      const a0 = document.createElement("a");
-      a0.href = "#";
-      a0.textContent = "Tags";
-      a0.addEventListener("click", function (e) { e.preventDefault(); clearTagView(); });
-      breadcrumbEl.appendChild(a0);
-      const sep = document.createElement("span");
-      sep.className = "sep";
-      sep.textContent = " ▸ ";
-      breadcrumbEl.appendChild(sep);
-      const a1 = document.createElement("span");
-      a1.textContent = tag;
-      breadcrumbEl.appendChild(a1);
     } else {
       if (currentPathLeftEl) currentPathLeftEl.textContent = currentPathLeft || "/";
       if (currentPathRightEl) currentPathRightEl.textContent = currentPathRight || "/";
@@ -653,12 +657,61 @@
       if (btnUpRight) btnUpRight.disabled = !currentPathRight || (roots.some(function (r) { return currentPathRight === r; }) && currentPathRight !== "/");
     }
     if (!skipRefreshTagsSection) refreshTagsSection();
+    updateDropzoneLabels();
+  }
+
+  function buildBreadcrumbForScope(scopePath, suffix) {
+    breadcrumbEl.innerHTML = "";
+    var parts = (scopePath === "/" || !scopePath) ? [] : scopePath.replace(/^\/+/, "").split("/").filter(Boolean);
+    var soFar = "/";
+    var a0 = document.createElement("a");
+    a0.href = "#";
+    a0.textContent = "Root";
+    a0.addEventListener("click", function (e) { e.preventDefault(); clearTagView(); if (roots[0]) navigateTo(roots[0], "left"); });
+    breadcrumbEl.appendChild(a0);
+    for (var i = 0; i < parts.length; i++) {
+      soFar = soFar === "/" ? "/" + parts[i] : soFar + "/" + parts[i];
+      var sep = document.createElement("span");
+      sep.className = "sep";
+      sep.textContent = " ▸ ";
+      breadcrumbEl.appendChild(sep);
+      var link = document.createElement("a");
+      link.href = "#";
+      link.textContent = parts[i];
+      (function (path) {
+        link.addEventListener("click", function (e) { e.preventDefault(); clearTagView(); navigateTo(path, "left"); });
+      })(soFar);
+      breadcrumbEl.appendChild(link);
+    }
+    var sepEnd = document.createElement("span");
+    sepEnd.className = "sep";
+    sepEnd.textContent = " ▸ ";
+    breadcrumbEl.appendChild(sepEnd);
+    var suffixSpan = document.createElement("span");
+    suffixSpan.textContent = suffix;
+    breadcrumbEl.appendChild(suffixSpan);
+  }
+
+  function updateDropzoneLabels() {
+    if (dropzoneLeftEl) {
+      if (currentTag && !isTagSearchView) {
+        dropzoneLeftEl.textContent = "Drop here to add tag " + currentTag;
+        dropzoneLeftEl.title = "Drop here to add tag " + currentTag;
+      } else if (isTagSearchView) {
+        dropzoneLeftEl.textContent = "Search results — drop not supported";
+        dropzoneLeftEl.title = "Search results are read-only";
+      } else {
+        dropzoneLeftEl.textContent = "Drop here to move into this folder";
+        dropzoneLeftEl.title = "Drop here to move into this folder";
+      }
+    }
   }
 
   function clearTagView() {
     currentTag = null;
     isTagSearchView = false;
     setCurrentPath(currentPathLeft, "left");
+    updateDropzoneLabels();
     clearPreview();
     clearConsole();
     if (currentPathLeft) navigateTo(currentPathLeft, "left"); else navigateTo(roots[0], "left");
@@ -882,59 +935,6 @@
       .catch(function (err) { alert(err.message || "Failed to update pattern"); });
   }
 
-  function buildTagViewRowHtml(e) {
-    const rowClass = (e.is_dir ? "row-dir" : "") + (e.has_direct_match === false ? " row-contains-descendant" : "");
-    const icon = e.is_dir ? "📁" : "📄";
-    const explicitTags = e.tags || [];
-    const inheritedTags = e.tags_inherited || [];
-    const nullTags = e.tags_null || [];
-    const effective = explicitTags.concat(inheritedTags.filter(function (t) { return explicitTags.indexOf(t) < 0 && nullTags.indexOf(t) < 0; }));
-    const checked = selectedPaths.has(e.path) ? ' checked="checked"' : "";
-    let tagsHtml = '<span class="tags-list">';
-    explicitTags.forEach(function (t) {
-      tagsHtml += '<span class="tag-pill explicit tag-pill-hard" role="button" tabindex="0" data-path="' + escapeHtml(e.path) + '" data-tag="' + escapeHtml(t) + '" title="Hard tag — click to make null"><span class="tag-name">' + escapeHtml(t) + '</span>';
-      if (currentTag) {
-        tagsHtml += ' <button type="button" class="tag-remove" data-path="' + escapeHtml(e.path) + '" data-tag="' + escapeHtml(t) + '" aria-label="Remove tag">×</button>';
-      }
-      tagsHtml += '</span>';
-    });
-    inheritedTags.forEach(function (t) {
-      if (explicitTags.indexOf(t) >= 0 || nullTags.indexOf(t) >= 0) return;
-      tagsHtml += '<span class="tag-pill tag-pill-soft" role="button" tabindex="0" data-path="' + escapeHtml(e.path) + '" data-tag="' + escapeHtml(t) + '" title="Soft tag — click to make hard">' + '<span class="tag-name">' + escapeHtml(t) + '</span></span>';
-    });
-    nullTags.forEach(function (t) {
-      tagsHtml += '<span class="tag-pill tag-pill-null" role="button" tabindex="0" data-path="' + escapeHtml(e.path) + '" data-tag="' + escapeHtml(t) + '" title="Null tag — click to make hard"><span class="tag-name">' + escapeHtml(t) + '</span></span>';
-    });
-    tagsHtml += '</span>';
-    return '<tr class="' + rowClass + '" data-path="' + (e.path || "").replace(/"/g, "&quot;") + '" data-isdir="' + e.is_dir + '">' +
-      '<td class="checkbox-cell"><input type="checkbox" class="row-select" data-path="' + escapeHtml(e.path) + '"' + checked + ' /></td>' +
-      '<td class="icon-cell">' + icon + '</td>' +
-      '<td class="name-cell">' + escapeHtml(e.name) + '</td>' +
-      '<td class="path-cell">' + escapeHtml(e.path) + '</td>' +
-      '<td class="tags-cell">' + tagsHtml + '</td>' +
-      '<td class="actions-cell"><button type="button" class="btn-trash" data-path="' + escapeHtml(e.path) + '" title="Move to trash" aria-label="Move to trash">\uD83D\uDDD1</button></td></tr>';
-  }
-
-  function attachTagViewRowHandlers(tr) {
-    if (tr.classList.contains("row-dir")) {
-      tr.addEventListener("click", function (e) {
-        if (e.target.closest(".tags-cell") || e.target.closest(".checkbox-cell") || e.target.closest(".actions-cell") || e.target.closest(".name-cell-text")) return;
-        currentTag = null;
-        isTagSearchView = false;
-        var destPath = getRowNavigatePath(tr);
-        if (destPath) navigateTo(destPath);
-      });
-    }
-    var cb = tr.querySelector(".row-select");
-    if (cb) {
-      cb.addEventListener("click", function (e) { e.stopPropagation(); });
-      cb.addEventListener("change", function () {
-        if (cb.checked) selectedPaths.add(cb.dataset.path); else selectedPaths.delete(cb.dataset.path);
-        updateSelectionBar();
-      });
-    }
-  }
-
   function doTagSearch(tag) {
     const scopePath = currentPath || (roots.length ? roots[0] : "") || "/";
     var modeEl = document.querySelector(".search-mode-select");
@@ -964,9 +964,9 @@
       });
     }
 
-    listingEl.innerHTML = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" id="selectAllTag" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="path-cell">Path</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody></tbody></table>';
+    listingEl.innerHTML = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" class="select-all-folder" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="size-cell">Size</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody></tbody></table>';
     var tbody = listingEl.querySelector("tbody");
-    var selectAll = document.getElementById("selectAllTag");
+    var selectAll = listingEl.querySelector(".select-all-folder");
     if (selectAll) {
       selectAll.addEventListener("change", function () {
         var checkboxes = listingEl.querySelectorAll(".row-select");
@@ -1038,7 +1038,7 @@
 
     if (searchMode === "contains") {
       tagSearchAbortController = new AbortController();
-      var url = api("tag-search?tag=" + encodeURIComponent(tag) + "&path=" + encodeURIComponent(scopePath) + fullDataParams() + showNullTagsParam() + "&report_all_tags=1&mode=contains");
+      var url = api("tag-search?tag=" + encodeURIComponent(tag) + "&path=" + encodeURIComponent(scopePath) + fullDataParams() + "&report_all_tags=1&mode=contains");
       fetch(url, { signal: tagSearchAbortController.signal })
         .then(function (r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
         .then(function (data) {
@@ -1046,27 +1046,23 @@
           restoreTagsSearchInput();
           var allEntries = data.entries || [];
           lastViewData = { type: "tag-search", tag: tag, mode: "contains", entries: allEntries };
-          var visible = filterEntriesByVisibility(allEntries);
+          var visible = filterEntriesByVisibility(allEntries, undefined, { type: "tag-search", tag: tag });
           tagsInCurrentView = tagsInScopeFromEntries(visible);
           refreshTagsSection();
-          var html = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" id="selectAllTag" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="path-cell">Path</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody>';
-          visible.forEach(function (e) {
-            html += buildTagViewRowHtml(e);
+          var sorted = visible.slice().sort(function (a, b) {
+            if (a.is_dir && !b.is_dir) return -1;
+            if (!a.is_dir && b.is_dir) return 1;
+            var ap = (a.vpath || a.path || "").toLowerCase();
+            var bp = (b.vpath || b.path || "").toLowerCase();
+            return ap < bp ? -1 : ap > bp ? 1 : 0;
+          });
+          var html = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" class="select-all-folder" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="size-cell">Size</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody>';
+          sorted.forEach(function (e) {
+            html += buildListingRowHtml(e);
           });
           html += "</tbody></table>";
           listingEl.innerHTML = html;
-          listingEl.querySelectorAll("tbody tr").forEach(function (tr) {
-            attachTagViewRowHandlers(tr);
-          });
-          var selAll = document.getElementById("selectAllTag");
-          if (selAll) {
-            selAll.addEventListener("change", function () {
-              var checkboxes = listingEl.querySelectorAll(".row-select");
-              if (selAll.checked) checkboxes.forEach(function (cb) { selectedPaths.add(cb.dataset.path); });
-              else checkboxes.forEach(function (cb) { selectedPaths.delete(cb.dataset.path); });
-              updateSelectionBar();
-            });
-          }
+          attachScopedListingRowHandlers(listingEl, "left");
           var scopePathNorm = (scopePath === "/" || !scopePath) ? "/" : scopePath.replace(/\/+$/, "");
           var pathToNode = {};
           function norm(p) { return (p === "/" || !p) ? "/" : (p + "").replace(/\/+$/, ""); }
@@ -1133,7 +1129,7 @@
 
     tagSearchAbortController = new AbortController();
     var signal = tagSearchAbortController.signal;
-    var url = api("tag-search?tag=" + encodeURIComponent(tag) + "&path=" + encodeURIComponent(scopePath) + fullDataParams() + showNullTagsParam() + "&report_all_tags=1&mode=matches&stream=1");
+    var url = api("tag-search?tag=" + encodeURIComponent(tag) + "&path=" + encodeURIComponent(scopePath) + fullDataParams() + "&report_all_tags=1&mode=matches&stream=1");
     var streamedEntries = [];
     var searchTreePathToNode = {};
     var searchTreeCurrentPath = null;
@@ -1222,10 +1218,10 @@
             } else if (obj.type === "entry" && obj.entry) {
               streamedEntries.push(obj.entry);
               if (tbody) {
-                var rowHtml = buildTagViewRowHtml(obj.entry);
+                var rowHtml = buildListingRowHtml(obj.entry);
                 tbody.insertAdjacentHTML("beforeend", rowHtml);
                 var newTr = tbody.querySelector("tr:last-child");
-                if (newTr) attachTagViewRowHandlers(newTr);
+                if (newTr) attachScopedListingRowHandlersForRow(newTr, "left");
               }
               var entryPath = obj.entry.path;
               var dirPath = obj.entry.is_dir ? entryPath : entryPath.split("/").slice(0, -1).join("/") || "/";
@@ -1239,7 +1235,7 @@
                 searchTreeCurrentPath = null;
               }
               lastViewData = { type: "tag-search", tag: tag, mode: "matches", entries: streamedEntries };
-              var visible = filterEntriesByVisibility(streamedEntries);
+              var visible = filterEntriesByVisibility(streamedEntries, undefined, { type: "tag-search", tag: tag });
               tagsInCurrentView = tagsInScopeFromEntries(visible);
               refreshTagsSection();
               listingEl.innerHTML = "";
@@ -1264,7 +1260,7 @@
                   searchTreeCurrentPath = null;
                 }
                 lastViewData = { type: "tag-search", tag: tag, mode: "matches", entries: streamedEntries };
-                var visible = filterEntriesByVisibility(streamedEntries);
+                var visible = filterEntriesByVisibility(streamedEntries, undefined, { type: "tag-search", tag: tag });
                 tagsInCurrentView = tagsInScopeFromEntries(visible);
                 refreshTagsSection();
                 listingEl.innerHTML = "";
@@ -1296,25 +1292,71 @@
       });
   }
 
-  function renderTagViewTable(entries) {
-    let html = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" id="selectAllTag" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="path-cell">Path</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody>';
-    entries.forEach(function (e) {
-      html += buildTagViewRowHtml(e);
+  /** Attach row click/dblclick/select handlers for tag or search scope listing. Same as folder listing but row click does not call setCurrentPath when currentTag or isTagSearchView. */
+  function attachScopedListingRowHandlers(listEl, pane) {
+    if (!listEl) return;
+    listEl.querySelectorAll("tbody tr[data-path]").forEach(function (tr) {
+      attachScopedListingRowHandlersForRow(tr, pane);
     });
-    html += "</tbody></table>";
-    listingEl.innerHTML = html;
-    listingEl.querySelectorAll("tbody tr").forEach(function (tr) {
-      attachTagViewRowHandlers(tr);
-    });
-    var selectAll = document.getElementById("selectAllTag");
+    var selectAll = listEl.querySelector(".select-all-folder");
     if (selectAll) {
       selectAll.addEventListener("change", function () {
-        var checkboxes = listingEl.querySelectorAll(".row-select");
+        var checkboxes = listEl.querySelectorAll(".row-select");
         if (selectAll.checked) checkboxes.forEach(function (cb) { selectedPaths.add(cb.dataset.path); });
         else checkboxes.forEach(function (cb) { selectedPaths.delete(cb.dataset.path); });
         updateSelectionBar();
       });
     }
+    listEl.querySelectorAll(".row-select").forEach(function (cb) {
+      cb.addEventListener("click", function (e) { e.stopPropagation(); });
+      cb.addEventListener("change", function () {
+        if (cb.checked) selectedPaths.add(cb.dataset.path); else selectedPaths.delete(cb.dataset.path);
+        updateSelectionBar();
+      });
+    });
+  }
+
+  function attachScopedListingRowHandlersForRow(tr, pane) {
+    tr.addEventListener("click", function (e) {
+      if (e.target.closest(".tags-cell") || e.target.closest(".checkbox-cell") || e.target.closest(".actions-cell")) return;
+      if (e.target.closest("input.rename-input")) return;
+      activePane = pane;
+      if (!currentTag && !isTagSearchView) setCurrentPath(activePane === "left" ? currentPathLeft : currentPathRight, activePane);
+      selectListingRow(tr, pane);
+    });
+    if (tr.classList.contains("row-dir")) {
+      tr.addEventListener("dblclick", function (e) {
+        if (e.target.closest(".tags-cell") || e.target.closest(".checkbox-cell") || e.target.closest(".actions-cell")) return;
+        if (e.target.closest("input.rename-input")) return;
+        var destPath = getRowNavigatePath(tr);
+        if (destPath) navigateTo(destPath, pane);
+      });
+    }
+    var cb = tr.querySelector(".row-select");
+    if (cb) {
+      cb.addEventListener("click", function (e) { e.stopPropagation(); });
+      cb.addEventListener("change", function () {
+        if (cb.checked) selectedPaths.add(cb.dataset.path); else selectedPaths.delete(cb.dataset.path);
+        updateSelectionBar();
+      });
+    }
+  }
+
+  function renderTagViewTable(entries) {
+    var html = '<table><thead><tr><th class="checkbox-cell"><input type="checkbox" class="select-all-folder" title="Select all" /></th><th class="icon-cell"></th><th>Name</th><th class="size-cell">Size</th><th class="tags-cell">Tags</th><th class="actions-cell"></th></tr></thead><tbody>';
+    var sorted = (entries || []).slice().sort(function (a, b) {
+      if (a.is_dir && !b.is_dir) return -1;
+      if (!a.is_dir && b.is_dir) return 1;
+      var ap = (a.vpath || a.path || "").toLowerCase();
+      var bp = (b.vpath || b.path || "").toLowerCase();
+      return ap < bp ? -1 : ap > bp ? 1 : 0;
+    });
+    sorted.forEach(function (e) {
+      html += buildListingRowHtml(e);
+    });
+    html += "</tbody></table>";
+    listingEl.innerHTML = html;
+    attachScopedListingRowHandlers(listingEl, "left");
   }
 
   /** Navigate path for an entry: vpath if set, else path. Use for all navigation (no special handling by color). */
@@ -1447,7 +1489,9 @@
         }
         var html = "<table class=\"changes-table\"><thead><tr><th class=\"changes-th-source\">Source</th><th class=\"changes-th-target\">Target</th><th class=\"changes-th-action\"></th></tr></thead><tbody>";
         lines.forEach(function (line) {
-          html += "<tr><td class=\"change-path-red\">" + escapeHtml(line.path) + "</td><td class=\"change-path-blue\">" + escapeHtml(line.vpath) + "</td><td class=\"changes-action-cell\"><button type=\"button\" class=\"btn-restore btn-restore-change\" data-path=\"" + (line.path || "").replace(/"/g, "&quot;") + "\" title=\"Restore (clear vpath)\" aria-label=\"Restore\">\u21A9</button></td></tr>";
+          var pathAttr = (line.path || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+          var vpathAttr = (line.vpath || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+          html += "<tr><td class=\"change-path-red\" title=\"" + pathAttr + "\">" + escapeHtml(line.path) + "</td><td class=\"change-path-blue\" title=\"" + vpathAttr + "\">" + escapeHtml(line.vpath) + "</td><td class=\"changes-action-cell\"><button type=\"button\" class=\"btn-restore btn-restore-change\" data-path=\"" + (line.path || "").replace(/"/g, "&quot;") + "\" title=\"Restore (clear vpath)\" aria-label=\"Restore\">\u21A9</button></td></tr>";
         });
         html += "</tbody></table>";
         changesBodyEl.innerHTML = html;
@@ -1461,12 +1505,14 @@
               body: JSON.stringify({ path: path, vpath: "" }),
             })
               .then(function (r) {
-                if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+                if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
                 return r.json();
               })
               .then(function () {
-                if (currentPathLeft != null) navigateTo(currentPathLeft, "left", true);
-                if (currentPathRight != null) navigateTo(currentPathRight, "right", true);
+                refreshAfterMoveOrRestore();
               })
               .catch(function (err) { alert(err.message || "Restore failed"); });
           });
@@ -1517,7 +1563,7 @@
         }
         if (data.kind === "error") {
           previewBodyEl.innerHTML = "";
-          if (previewFooterEl) previewFooterEl.textContent = data.error || "Failed to load preview.";
+          if (previewFooterEl) previewFooterEl.textContent = (data.error && data.error.message) || (typeof data.error === "string" ? data.error : null) || "Failed to load preview.";
           return;
         }
         clearPreview();
@@ -1543,7 +1589,7 @@
     }
   }
 
-  /** Select a listing row (highlight only). Single-click behavior for both folders and files. */
+  /** Select a listing row (highlight only). Single-click behavior for both folders and files. Do not change scope when in tag or search scope. */
   function selectListingRow(tr, pane) {
     if (!tr || !tr.dataset || !tr.dataset.path) return;
     [listingLeftEl, listingRightEl].forEach(function (el) {
@@ -1551,7 +1597,7 @@
     });
     tr.classList.add("row-selected");
     activePane = pane;
-    setCurrentPath(pane === "left" ? currentPathLeft : currentPathRight, pane);
+    if (!currentTag && !isTagSearchView) setCurrentPath(pane === "left" ? currentPathLeft : currentPathRight, pane);
     if (tr.dataset.isdir === "true" || tr.dataset.isdir === "True") {
       previewSelectedPath = null;
       return;
@@ -1582,6 +1628,11 @@
     input.focus();
     input.select();
     function listingPath() {
+      if (currentTag || isTagSearchView) {
+        var p = (row.dataset.path || "").replace(/\\/g, "/");
+        var idx = p.lastIndexOf("/");
+        return idx <= 0 ? "/" : p.slice(0, idx);
+      }
       return ((pane === "left" ? currentPathLeft : currentPathRight) || "/").replace(/\/$/, "") || "/";
     }
     function replaceWithSpan(text) {
@@ -1605,13 +1656,21 @@
         body: JSON.stringify({ path: path, vpath: newVpath }),
       })
         .then(function (r) {
-          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+          if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
           return r.json();
         })
         .then(function () {
           replaceWithSpan(newName);
-          if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-          if (currentPathRight) navigateTo(currentPathRight, "right", true);
+          if (currentTag) {
+            if (isTagSearchView) doTagSearch(currentTag);
+            else navigateToTag(currentTag);
+          } else {
+            if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
+            if (currentPathRight) navigateTo(currentPathRight, "right", true);
+          }
         })
         .catch(function (err) {
           alert(err.message || "Rename failed");
@@ -1685,10 +1744,45 @@
     selectPreviewRow(tr);
   }
 
+  /** Re-fetch and re-render one pane's folder listing. Does not change currentTag or the other pane. */
+  function refreshPaneListing(pane) {
+    var path = pane === "left" ? currentPathLeft : currentPathRight;
+    if (!path) return Promise.resolve();
+    var listEl = pane === "left" ? listingLeftEl : listingRightEl;
+    var url = "listing?path=" + encodeURIComponent(path) + fullDataParams() + "&report_all_tags=1&_=" + Date.now();
+    return fetchJson(url)
+      .then(function (data) {
+        var allEntries = data.entries || [];
+        var viewData = { type: "listing", path: path, entries: allEntries };
+        if (pane === "left") lastViewDataLeft = viewData; else lastViewDataRight = viewData;
+        var visible = filterEntriesByVisibility(allEntries, path);
+        if (pane === "left") {
+          tagsInCurrentView = tagsInScopeFromEntries(visible);
+          refreshTagsSection();
+        }
+        renderListingFromEntries(visible, path, listEl, pane);
+        refreshChangesPane();
+      })
+      .catch(function () {});
+  }
+
+  /** Refresh both panes after a move or restore, preserving scope (TS/SRS left pane stays in scope). */
+  function refreshAfterMoveOrRestore() {
+    if (currentTag) {
+      if (isTagSearchView) doTagSearch(currentTag);
+      else navigateToTag(currentTag);
+      refreshPaneListing("right");
+    } else {
+      if (currentPathLeft != null) navigateTo(currentPathLeft, "left", true);
+      if (currentPathRight != null) navigateTo(currentPathRight, "right", true);
+    }
+  }
+
   function refreshCurrentView() {
     if (currentTag) {
       if (lastViewData && lastViewData.entries) {
-        var visible = filterEntriesByVisibility(lastViewData.entries);
+        var viewCtx = (lastViewData.type === "tagged" && lastViewData.tag) ? { type: "tagged", tag: lastViewData.tag } : (lastViewData.type === "tag-search" && lastViewData.tag ? { type: "tag-search", tag: lastViewData.tag } : undefined);
+        var visible = filterEntriesByVisibility(lastViewData.entries, lastViewData.path, viewCtx);
         renderTagViewTable(visible);
       }
       if (tagsInCurrentView) refreshTagsSection();
@@ -1721,12 +1815,11 @@
     clearPreview();
     clearConsole();
     listingLeftEl.innerHTML = '<div class="loading">Loading…</div>';
-    if (listingRightEl) listingRightEl.innerHTML = "";
-    return fetchJson("tagged?tag=" + encodeURIComponent(tag) + fullDataParams() + showNullTagsParam() + "&report_all_tags=1")
+    return fetchJson("tagged?tag=" + encodeURIComponent(tag) + fullDataParams() + "&report_all_tags=1")
       .then(function (data) {
         var allEntries = data.entries || [];
         lastViewData = { type: "tagged", tag: tag, entries: allEntries };
-        var visible = filterEntriesByVisibility(allEntries);
+        var visible = filterEntriesByVisibility(allEntries, undefined, { type: "tagged", tag: tag });
         tagsInCurrentView = tagsInScopeFromEntries(visible);
         refreshTagsSection();
         renderTagViewTable(visible);
@@ -2030,12 +2123,14 @@
           body: JSON.stringify({ path: path, vpath: newVpath }),
         })
           .then(function (r) {
-            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+            if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
             return r.json();
           })
           .then(function () {
-            if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-            if (currentPathRight) navigateTo(currentPathRight, "right", true);
+            refreshAfterMoveOrRestore();
           })
           .catch(function (err) { alert(err.message || "Move failed"); });
         return;
@@ -2051,12 +2146,14 @@
           body: JSON.stringify({ path: path, vpath: "" }),
         })
           .then(function (r) {
-            if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+            if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
             return r.json();
           })
           .then(function () {
-            if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-            if (currentPathRight) navigateTo(currentPathRight, "right", true);
+            refreshAfterMoveOrRestore();
           })
           .catch(function (err) { alert(err.message || "Restore failed"); });
         return;
@@ -2107,7 +2204,7 @@
   attachListingHandlers(listingLeftEl, "left");
   attachListingHandlers(listingRightEl, "right");
 
-  function attachDragDrop(listEl) {
+  function attachDragDrop(listEl, pane) {
     if (!listEl) return;
     var dragImageEl = null;
     var draggedPath = null;
@@ -2130,6 +2227,7 @@
       if (!row) return;
       var path = row.dataset.path;
       draggedPath = path;
+      draggedFromPane = pane || (listEl === listingLeftEl ? "left" : "right");
       var isDir = row.dataset.isdir === "true" || row.dataset.isdir === "True";
       e.dataTransfer.setData("text/plain", path);
       e.dataTransfer.effectAllowed = "move";
@@ -2138,6 +2236,7 @@
     });
     listEl.addEventListener("dragend", function () {
       draggedPath = null;
+      draggedFromPane = null;
       listEl.querySelectorAll("tr.drag-target").forEach(function (r) { r.classList.remove("drag-target"); });
       if (dragImageEl && dragImageEl.parentNode) dragImageEl.parentNode.removeChild(dragImageEl);
       dragImageEl = null;
@@ -2180,18 +2279,27 @@
         body: JSON.stringify({ path: path, vpath: vpath }),
       })
         .then(function (r) {
-          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+          if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
           return r.json();
         })
         .then(function () {
-          if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-          if (currentPathRight) navigateTo(currentPathRight, "right", true);
+          if (currentTag && draggedFromPane === "left") {
+            return fetch(api("tags") + "?path=" + encodeURIComponent(path) + "&tag=" + encodeURIComponent(currentTag), { method: "DELETE" })
+              .then(function (r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+              .then(function () {});
+          }
+        })
+        .then(function () {
+          refreshAfterMoveOrRestore();
         })
         .catch(function (err) { alert(err.message || "Move failed"); });
     });
   }
-  attachDragDrop(listingLeftEl);
-  attachDragDrop(listingRightEl);
+  attachDragDrop(listingLeftEl, "left");
+  attachDragDrop(listingRightEl, "right");
 
   function attachDropzone(dropzoneEl, pane) {
     if (!dropzoneEl) return;
@@ -2208,6 +2316,28 @@
       dropzoneEl.classList.remove("drag-over");
       var path = e.dataTransfer.getData("text/plain");
       if (!path) return;
+      if (pane === "left" && isTagSearchView) return;
+      if (pane === "left" && currentTag && !isTagSearchView) {
+        fetch(api("tags/batch"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths: [path], tag: currentTag }),
+        })
+          .then(function (r) {
+            if (!r.ok) return r.json().then(function (d) {
+              var msg = (d.error && d.error.message) || d.error || r.statusText;
+              throw new Error(typeof msg === "string" ? msg : "Request failed");
+            });
+            return r.json();
+          })
+          .then(function () {
+            refreshTagsSection();
+            if (currentTag) { if (isTagSearchView) doTagSearch(currentTag); else navigateToTag(currentTag); }
+            refreshPaneListing("right");
+          })
+          .catch(function (err) { alert(err.message || "Failed to add tag"); });
+        return;
+      }
       var scope = pane === "left" ? currentPathLeft : currentPathRight;
       if (!scope) scope = roots.length ? roots[0] : "/";
       if (typeof scope !== "string") scope = String(scope);
@@ -2221,18 +2351,28 @@
         body: JSON.stringify({ path: path, vpath: vpath }),
       })
         .then(function (r) {
-          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+          if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
           return r.json();
         })
         .then(function () {
-          if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-          if (currentPathRight) navigateTo(currentPathRight, "right", true);
+          if (currentTag && draggedFromPane === "left") {
+            return fetch(api("tags") + "?path=" + encodeURIComponent(path) + "&tag=" + encodeURIComponent(currentTag), { method: "DELETE" })
+              .then(function (r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+              .then(function () {});
+          }
+        })
+        .then(function () {
+          refreshAfterMoveOrRestore();
         })
         .catch(function (err) { alert(err.message || "Move failed"); });
     });
   }
   attachDropzone(dropzoneLeftEl, "left");
   attachDropzone(dropzoneRightEl, "right");
+  updateDropzoneLabels();
 
   document.addEventListener("keydown", function (e) {
       var active = document.activeElement;
@@ -2253,8 +2393,13 @@
         var nextIdx = e.key === "ArrowDown" ? idx + 1 : idx - 1;
         if (nextIdx < 0 || nextIdx >= rows.length) return;
         e.preventDefault();
-        activateListingRow(rows[nextIdx], pane);
-        rows[nextIdx].scrollIntoView({ block: "nearest" });
+        if (currentTag || isTagSearchView) {
+          selectListingRow(rows[nextIdx], pane);
+          rows[nextIdx].scrollIntoView({ block: "nearest" });
+        } else {
+          activateListingRow(rows[nextIdx], pane);
+          rows[nextIdx].scrollIntoView({ block: "nearest" });
+        }
         return;
       }
       if (e.key === "Backspace" && selected && selected.dataset && selected.dataset.path) {
@@ -2276,12 +2421,14 @@
             body: JSON.stringify({ path: path, vpath: newVpath }),
           })
             .then(function (r) {
-              if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+              if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
               return r.json();
             })
             .then(function () {
-              if (currentPathLeft) navigateTo(currentPathLeft, "left", true);
-              if (currentPathRight) navigateTo(currentPathRight, "right", true);
+              refreshAfterMoveOrRestore();
             })
             .then(function () {
               if (pathToSelect) selectRowByPath(pathToSelect);
@@ -2321,10 +2468,6 @@
       if (currentPathRight) navigateTo(currentPathRight, "right"); else navigateTo(roots[0], "right");
       return;
     }
-    if (currentTag) {
-      clearTagView();
-      return;
-    }
     fetchJson("parent?path=" + encodeURIComponent(currentPathRight))
       .then(function (data) {
         if (data.parent != null) navigateTo(data.parent, "right");
@@ -2344,7 +2487,10 @@
         body: JSON.stringify({ path: currentPathLeft, name: name }),
       })
         .then(function (r) {
-          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+          if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
           return r.json();
         })
         .then(function () {
@@ -2358,7 +2504,7 @@
   }
   if (btnAddFolderRightEl) {
     btnAddFolderRightEl.addEventListener("click", function () {
-      if (currentTag || !currentPathRight) return;
+      if (!currentPathRight) return;
       var name = (typeof prompt === "function" ? prompt("Folder name") : null) || "";
       name = name.trim();
       if (!name) return;
@@ -2368,11 +2514,15 @@
         body: JSON.stringify({ path: currentPathRight, name: name }),
       })
         .then(function (r) {
-          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || r.statusText); });
+          if (!r.ok) return r.json().then(function (d) {
+            var msg = (d.error && d.error.message) || d.error || r.statusText;
+            throw new Error(typeof msg === "string" ? msg : "Request failed");
+          });
           return r.json();
         })
         .then(function () {
-          navigateTo(currentPathRight, "right");
+          if (currentTag) refreshPaneListing("right");
+          else navigateTo(currentPathRight, "right");
           if ((currentPathRight || "").replace(/\/$/, "") === "/Volumes") refreshTree();
         })
         .catch(function (err) {

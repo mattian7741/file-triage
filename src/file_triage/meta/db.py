@@ -106,10 +106,6 @@ def init_db(db_path: Path) -> None:
                 "CREATE UNIQUE INDEX meta_vpath_unique ON meta(vpath) WHERE vpath IS NOT NULL"
             )
             conn.commit()
-        # Migration: rename tag 'trash' to 'hide' (trash is now vpath-based)
-        conn.execute("UPDATE tags SET tag = 'hide' WHERE tag = 'trash'")
-        conn.execute("UPDATE tag_nulls SET tag = 'hide' WHERE tag = 'trash'")
-        conn.commit()
     finally:
         conn.close()
 
@@ -203,11 +199,14 @@ def get_all_tagged_paths(db_path: Path) -> list[str]:
 
 
 def get_all_tags(db_path: Path) -> list[str]:
-    """Return all distinct tag names, sorted."""
+    """Return all distinct tag names from tags and tag_nulls tables, sorted."""
     conn = _conn(db_path)
     try:
-        cur = conn.execute("SELECT DISTINCT tag FROM tags ORDER BY tag")
-        return [row[0] for row in cur.fetchall()]
+        cur = conn.execute("SELECT DISTINCT tag FROM tags")
+        tags_set = {row[0] for row in cur.fetchall()}
+        cur = conn.execute("SELECT DISTINCT tag FROM tag_nulls")
+        tags_set.update(row[0] for row in cur.fetchall())
+        return sorted(tags_set)
     finally:
         conn.close()
 

@@ -382,8 +382,8 @@ def get_virtual_children(db_path: Path, parent_path: str | Path) -> list[str]:
 
 
 def set_vpath(db_path: Path, path: str | Path, vpath: str | Path | None) -> None:
-    """Set the virtual path (display location) for a path. No filesystem change.
-    If the path has no meta row, one is created. vpath=None clears the move.
+    """Set location state (vpath) for the path. Move, rename, trash, restore all use this single primitive.
+    No filesystem change. If the path has no meta row, one is created. vpath=None clears the location state.
     If vpath equals path (after normalization), vpath is nullified to avoid duplicate listings.
     Raises ValueError if another row already has this vpath (duplicate folder name).
     Stores vpath with _scope_key (no resolve) so listing by vpath works when path doesn't exist on disk."""

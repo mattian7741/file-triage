@@ -739,7 +739,8 @@ def create_app(
 
         @app.route("/api/move", methods=["POST"])
         def api_move():
-            """Set vpath (display location) for a path. No filesystem change."""
+            """Set location state (vpath) for the entity identified by path. Move, rename, trash, restore
+            are all this single state update. Contract: PUT /api/vpath; this route kept for compatibility."""
             data = request.get_json() or {}
             path_raw = (data.get("path") or "").strip()
             vpath_raw = (data.get("vpath") or "").strip()
@@ -762,7 +763,8 @@ def create_app(
 
         @app.route("/api/changes")
         def api_changes():
-            """Return moved items (path, vpath) where path or vpath is under scope_left or scope_right."""
+            """Return meta rows (path, vpath) where path or vpath is under scope_left or scope_right.
+            Used for the changes pane (location-state changes in either pane scope)."""
             scope_left = (request.args.get("scope_left") or "").strip() or None
             scope_right = (request.args.get("scope_right") or "").strip() or None
             rows = _meta.get_moved_in_scopes(scope_left, scope_right)

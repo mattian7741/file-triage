@@ -13,7 +13,7 @@ from .domain import build_listing_entry, effective_path as domain_effective_path
 
 
 def has_vpath(meta_accessor: Any, path: Path) -> bool:
-    """True if path has a meta row with non-null vpath (moved/trashed)."""
+    """True if path has a meta row with non-null vpath (location state set, e.g. moved/trashed)."""
     if not meta_accessor:
         return False
     try:
@@ -30,7 +30,7 @@ def is_empty_recursive(
     meta_accessor: Any = None,
 ) -> bool:
     """True if path is a 0-byte file, or a directory with no children or whose descendants are all recursively empty.
-    When meta_accessor is set, paths with non-null vpath are treated as not present (moved/trashed)."""
+    When meta_accessor is set, paths with location state set (vpath) are treated as not present."""
     if visited is None:
         visited = set()
     try:

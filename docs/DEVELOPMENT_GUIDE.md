@@ -6,6 +6,8 @@ Entry point for development. This guide names the project’s key documents and 
 
 **Documentation discipline:** All documents must remain under heavy scrutiny and be challenged on any frictional or inconsistent encounter. Documentation must evolve in a **convergent** way. Prioritize and claim any opportunity to reduce documentation complexity, wordiness, logical load, or redundancy.
 
+**First-order prerequisites:** **Git hygiene** (see CODING_STANDARDS § Git management) and **deployment strategy and CI/CD** (see CODING_STANDARDS § Deployment and CI/CD). Neither is optional for non-sandbox projects: resolve both before development. Deployment requires a chosen approach and a hello-world MVP run through the deployment workflow.
+
 ---
 
 ## Document map
@@ -28,6 +30,16 @@ Entry point for development. This guide names the project’s key documents and 
 
 ## How to use them together
 
+**0. Prerequisites (must be satisfied before development)**
+
+- **Git:** Active repo; no unresolved unstaged changes; work on a branch, not default (CODING_STANDARDS § Git management).
+- **Deployment and CI/CD:** Choose one of three approaches and complete the deployment workflow with a hello-world MVP (CODING_STANDARDS § Deployment and CI/CD):
+  - **Canonical** — Use the deployment strategy defined in CODING_STANDARDS (§ Canonical deployment strategy); shared across projects.
+  - **Custom** — Use a custom strategy with an **up-front, documented justification** for not using the canonical approach. Justification is the only valid substitute for the prerequisite.
+  - **No deployment** — Sandbox or other **justified** reason not to have a deployment strategy; document the reason. Unjustified “no deployment” does not satisfy the prerequisite.
+- A **hello-world MVP** must be implemented and run through the deployment workflow to complete this prerequisite.
+- **If you are midstream on an iteration:** Complete that iteration first (merge, push, update BACKLOG). Then satisfy the deployment prerequisite before starting the next development iteration. See BACKLOG § Deployment iteration.
+
 **1. Starting development**
 
 - Read this guide and **FUNCTIONAL_CHEATSHEET.md** to understand what the app does.
@@ -37,6 +49,7 @@ Entry point for development. This guide names the project’s key documents and 
 **2. Choosing work**
 
 - Work from **BACKLOG.md**. Pick an iteration (or the next unchecked task in the suggested order).
+- **Do not start a new development iteration** (e.g. Iteration 2) until the **Deployment iteration** is satisfied (pipeline in place, hello-world MVP run). If you just finished an iteration (e.g. Iteration 1), do the Deployment iteration next; see BACKLOG § Deployment iteration and § Suggested order.
 - Backlog tasks are outcomes, not implementation steps. Use the spec docs to know *what* must be true when the task is done.
 
 **3. Detailed design (just-in-time)**
@@ -81,12 +94,13 @@ DETAILED_DESIGN should not relitigate standards already established in CODING_ST
 ## Flow summary
 
 ```
-Understand behavior     →  CHEATSHEET, SPEC, PSEUDO_LOGIC, EXPLORER_RULES
-Choose work             →  BACKLOG
-Design (JIT)            →  DETAILED_DESIGN (by topology/features)
-Implement               →  CODING_STANDARDS + explorer_api_contract
-Resolve ambiguity       →  EXPLORER_RULES / PSEUDO_LOGIC first, then code
-Log / fix tactical      →  ISSUES (priority order; few per iteration when proximal or user-raised)
+Prerequisites          →  Git (branch, clean tree) + Deployment (canonical | custom justified | no-deployment justified) + hello-world MVP
+Understand behavior    →  CHEATSHEET, SPEC, PSEUDO_LOGIC, EXPLORER_RULES
+Choose work            →  BACKLOG
+Design (JIT)           →  DETAILED_DESIGN (by topology/features)
+Implement              →  CODING_STANDARDS + explorer_api_contract
+Resolve ambiguity      →  EXPLORER_RULES / PSEUDO_LOGIC first, then code
+Log / fix tactical     →  ISSUES (priority order; few per iteration when proximal or user-raised)
 ```
 
 Start here; use the map and flow above to navigate the rest.

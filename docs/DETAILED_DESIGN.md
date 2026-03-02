@@ -22,6 +22,16 @@ Technical approach and implementation strategy for iterations. Driven by BACKLOG
 
 **Single source of truth:** EXPLORER_RULES, FUNCTIONAL_SPECIFICATION, FUNCTIONAL_CHEATSHEET, PSEUDO_LOGIC. Contract and other docs point to these; no spec duplication elsewhere.
 
+**State-based API (CODING_STANDARDS):** Location is expressed as **state**, not action. The contract uses **PUT `/api/vpath`** (or PUT `/api/location`) to set the entity’s location state; no separate /move, /delete, /rename. Implementation may still expose a legacy `/api/move` route that delegates to the same state update until clients migrate.
+
+**Payload schemata:** All contract payloads will follow the global-superset principle (CODING_STANDARDS)—subset of a consistent superset, implicit mask per consumer, commutable to messaging. Full application across the API will be litigated as we evolve endpoints.
+
+---
+
+## Deployment (canonical: Electron + Homebrew Cask)
+
+This project is a desktop app that runs inside Electron. We use the **canonical deployment strategy** for desktop apps (CODING_STANDARDS § Canonical deployment strategy): build the Electron app to a macOS artifact, publish to a stable URL, distribute via Homebrew Cask. No custom or no-deployment justification; DETAILED_DESIGN and BACKLOG § Deployment iteration capture the concrete tasks to implement the pipeline and hello-world MVP.
+
 ---
 
 ## (Further sections by topology/feature as iterations are designed)

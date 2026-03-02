@@ -4,6 +4,8 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Ordering principle:** High impact from a design/maintenance perspective, **low blast radius** first. Ease into meaningful change; avoid high-risk destabilizing changes at the top.
 
+**Deployment before development:** Deployment strategy and end-to-end CI/CD are prerequisites for development (CODING_STANDARDS § Deployment and CI/CD). No development iteration (beyond the current one) may start until the deployment pipeline is in place and a hello-world MVP has been run through it. **If you are midstream on an iteration,** complete that iteration first; then satisfy the deployment prerequisite before advancing to the next development iteration. See § Deployment iteration below.
+
 **Relationship to CODING_STANDARDS.md:** BACKLOG defines **what** (outcomes, deliverables, iteration scope). CODING_STANDARDS.md defines **how** (implementation approach). The two are orthogonal: apply coding standards when implementing backlog items; do not embed coding strategy inside backlog tasks.
 
 ---
@@ -27,13 +29,30 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** Align documentation and public API naming with spec. No logic or UI behavior change. Lowest blast radius.
 
-- [ ] Contract doc has a "Terms (spec-aligned)" section: effective path, set_vpath, negation (tag state), scope (FS/TS/SRS), pane; API keys mapped to spec (e.g. tags_null ↔ negation).
-- [ ] API contract and responses consistently expose or document negation (e.g. tags_negation alias or tags_null documented as negation set). Frontend may continue using existing key until a later iteration.
-- [ ] Contract and in-code comments use "pane" where spec means container; "view" reserved for data-view context.
-- [ ] Move/rename/trash/restore primitive referred to as set_vpath or set location in contract and relevant docstrings.
-- [ ] EXPLORER_RULES, FUNCTIONAL_SPECIFICATION, FUNCTIONAL_CHEATSHEET, PSEUDO_LOGIC are the single source of truth; other docs (e.g. REFACTOR_ITERATION_PLAN) reference these rather than duplicating spec wording.
+- [x] Contract doc has a "Terms (spec-aligned)" section: effective path, set_vpath, negation (tag state), scope (FS/TS/SRS), pane; API keys mapped to spec (e.g. tags_null ↔ negation).
+- [x] API contract and responses consistently expose or document negation (e.g. tags_negation alias or tags_null documented as negation set). Frontend may continue using existing key until a later iteration.
+- [x] Contract and in-code comments use "pane" where spec means container; "view" reserved for data-view context.
+- [x] Move/rename/trash/restore primitive referred to as set_vpath or set location in contract and relevant docstrings.
+- [x] EXPLORER_RULES, FUNCTIONAL_SPECIFICATION, FUNCTIONAL_CHEATSHEET, PSEUDO_LOGIC are the single source of truth; other docs (e.g. REFACTOR_ITERATION_PLAN) reference these rather than duplicating spec wording.
 
 **Deliverables:** Updated contract doc; consistent terminology; no request/response behavior change.
+
+---
+
+## Deployment iteration — Pipeline and hello-world MVP (prerequisite gate)
+
+**Goal:** Satisfy the deployment/CI/CD prerequisite before advancing with further development work. This project uses the **canonical** approach for desktop apps (Electron + Homebrew Cask); see CODING_STANDARDS § Canonical deployment strategy and DETAILED_DESIGN § Deployment.
+
+- [ ] **Deployment approach:** Canonical (Electron + brew cask) chosen and documented in DETAILED_DESIGN § Deployment.
+- [ ] **Electron shell:** App runs inside Electron (wrap existing backend + frontend). Minimal window, load the Explorer UI; backend (Flask or equivalent) runs locally inside the app or is served by the same process.
+- [ ] **Build:** macOS artifact (`.app` in `.dmg` or `.zip`) produced via standard tool (e.g. `electron-builder`). Build is repeatable (e.g. from `npm run build` or CI script).
+- [ ] **Publish:** Artifact hosted at a stable, versioned URL (e.g. GitHub Releases). Pipeline creates the release and uploads the artifact.
+- [ ] **Cask:** A Homebrew Cask exists that points at the release URL (either in a dedicated tap repo or prepared for submission to homebrew-cask). Cask includes `version`, `sha256`, `url`, `name`, `desc`, `homepage`, `app`.
+- [ ] **CI/CD pipeline:** End-to-end workflow runs on push/tag (e.g. GitHub Actions): build Electron app → run tests → create release + upload artifact → (if using a tap) update cask and push. Pipeline is documented (e.g. in README or `.github/workflows`).
+- [ ] **Hello-world MVP:** Full run through the pipeline; install the app via `brew install --cask <cask>` (or run the built `.app`/`.dmg`) and verify it launches. Prerequisite satisfied; development unblocked for Iteration 2+.
+- [ ] No further development iterations (e.g. Iteration 2+) are started until this gate is satisfied. If midstream on an iteration (e.g. Iteration 1), complete it first, then complete this deployment iteration.
+
+**Deliverables:** Electron app builds and runs; artifact published at stable URL; cask available; CI/CD pipeline in place and exercised; hello-world MVP verified. Development unblocked for next backlog iteration.
 
 ---
 
@@ -155,6 +174,8 @@ Gap analysis between **current implementation** and **specification documents** 
 ```
 Iteration 1 (docs + naming, zero behavior)     ← start
     ↓
+Deployment iteration (pipeline + hello-world MVP)   ← gate: must complete before Iteration 2
+    ↓
 Iteration 2 (single entry-build path)           ← consolidation
     ↓
 Iteration 3 (empty model vs view)               ← small frontend + doc
@@ -166,10 +187,12 @@ Iteration 6 (null → negation naming)           ← API/types/docs
 Iteration 7 (regex_path search)                 ← new feature
 Iteration 8 (toggle placement)                  ← UI reorg, optional
 Iteration 9 (testing)                           ← can run in parallel after 2–4
-Iteration 10 (module organization)              ← optional, after 2
+Iteration 10 (module organization)                ← optional, after 2
 ```
 
-**Minimum to align with spec (time-boxed):** 1 → 2 → 3 → 4 → 5 → 6, then 9. That gives terminology, single entry path, empty semantics, contains no-op, parent-only inheritance, negation naming, and tests.
+**Midstream rule:** If already in progress on an iteration (e.g. Iteration 1), finish it; then do the **Deployment iteration** before starting Iteration 2.
+
+**Minimum to align with spec (time-boxed):** Deployment → 2 → 3 → 4 → 5 → 6, then 9. That gives pipeline, terminology, single entry path, empty semantics, contains no-op, parent-only inheritance, negation naming, and tests.
 
 ---
 

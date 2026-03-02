@@ -15,6 +15,40 @@ Lean overlay. Use with BACKLOG.md to drive implementation: BACKLOG defines **wha
 
 ---
 
+**Deployment and CI/CD (first-class concern)**
+
+- Deployment strategy and end-to-end CI/CD are **prerequisites for development**. They must be determined up front. A **hello-world MVP** must be implemented to complete the deployment workflow before feature development proceeds.
+- **Three approaches:**
+  1. **Canonical** — Use the deployment strategy defined in this document (§ Canonical deployment strategy). This approach is shared across multiple projects unless a special case applies.
+  2. **Custom** — A custom deployment strategy for special cases where there is a justified reason not to use the canonical approach. The justification must be decided and documented **up front**; good justification is the only valid substitute that satisfies the prerequisite.
+  3. **No deployment** — No deployment plan required because the project is a sandbox, prototype, or there is another **justified** reason. Document the reason; “no deployment needed” without justification does not satisfy the prerequisite.
+- Until one of the three is satisfied (canonical in use, custom justified and documented, or no-deployment justified and documented) and the hello-world deployment MVP is done, development work is not considered unblocked.
+
+**Canonical deployment strategy**
+
+- **Desktop apps (Electron).** For desktop applications that run inside Electron (and for similar GUI apps that will be distributed on macOS), the canonical approach is **build → publish to a stable URL → distribute via Homebrew Cask**.
+  - **Build:** Produce a macOS artifact (`.app` in a `.dmg` or `.zip`) using a standard tool (e.g. `electron-builder`, `electron-packager`). The pipeline runs on a supported CI platform (e.g. GitHub Actions).
+  - **Publish:** Host the artifact at a stable, versioned URL (e.g. GitHub Releases, internal artifact store). Each release has a deterministic URL (e.g. `https://.../releases/download/v1.0.0/App-1.0.0.dmg`).
+  - **Distribute:** Provide a **Homebrew Cask** that points at that URL. Use either the public [homebrew-cask](https://github.com/Homebrew/homebrew-cask) repo (submit a cask for review) or an **organization tap** (e.g. `homebrew-tap` repo with a Caskfile); users run `brew tap org/tap` then `brew install --cask app-name`.
+  - **CI/CD:** Pipeline steps: build the Electron app → run tests → create release / upload artifact → (if using a tap) update cask `version` and `sha256` and push to the tap repo. The **hello-world MVP** is: run this pipeline once and install the app via `brew install --cask <cask>` (or run the built artifact) and verify it launches.
+- Other application types (e.g. web services, CLIs) may use a different canonical strategy or a justified custom approach; document in CODING_STANDARDS when added.
+
+---
+
+- Prefer communicating **state** over **state-change** or **delta**. Example: “the value is 28” (state) rather than “change the value to 28” (change) or “add 3 to the value” (delta).
+- Entity contracts should express the **resulting state** of the entity, not the operation that got it there. Multiple action names (e.g. `/move`, `/delete`, `/rename`) that all produce the same final state overload the contract; use a single state-oriented resource (e.g. `/vpath` or `/location`) so the contract is “entity’s location state is X.”
+- This is equivalent to operating in an **absolute** rather than **relative** coordinate system and reduces ambiguity across domains and verticals.
+
+---
+
+**Payload schemata: global superset, consistent across entities**
+
+- All contract payload definitions should use a **subset of a global superset** of structured information. Entities can reference other entities (e.g. by ref id); a payload may contain multiple entity shapes in one structure.
+- Consumers receive the same payload shape; an **implicit mask** applies—each consumer uses only the subset it needs and ignores the rest. No consumer-specific payload variants.
+- This makes the same schema consumable by multiple consumers and allows API request/response schemas to **commute into a messaging layer** (e.g. event-driven service bus) without transformation. Apply for both APIs and event-driven messaging.
+
+---
+
 - **No ORMs.** Use explicit data access only.
 
 - **OOP for structure:** Organization, isolation, abstraction, interfaces, inheritance. Use object orientation for these; not for one-off scripts.

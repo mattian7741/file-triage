@@ -2,6 +2,8 @@
 
 This plan aligns the file-triage codebase with **AA_ADDENDUM_06_DEVELOPMENT_STANDARDS.md** (core-platform-spec). Iterations are ordered so each builds on the previous; each delivers a shippable state.
 
+**Spec source of truth:** Behavioral and functional authority are **PSEUDO_LOGIC.md**, **FUNCTIONAL_SPECIFICATION.md**, **FUNCTIONAL_CHEATSHEET.md**, and **EXPLORER_RULES.md**. This plan references those documents and does not duplicate spec wording. When behavior or rules are in question, resolve them there first.
+
 **Reference:** `dev/core-platform-spec/AA_ADDENDUM_06_DEVELOPMENT_STANDARDS.md`
 
 ---

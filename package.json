@@ -17,6 +17,7 @@
   "build": {
     "appId": "com.file-triage.app",
     "productName": "File Triage",
+    "publish": null,
     "mac": {
       "category": "public.app-category.utilities",
       "target": ["dmg", "zip"]
@@ -28,8 +29,8 @@
       "electron/**/*"
     ],
     "extraResources": [
-      { "from": "src", "to": "app/src" },
-      { "from": "pyproject.toml", "to": "app/" }
+      { "from": "src/file_triage", "to": "app/src/file_triage", "filter": ["**/*", "!**/__pycache__", "!**/__pycache__/**"] },
+      { "from": "pyproject.toml", "to": "app/pyproject.toml" }
     ]
   }
 }

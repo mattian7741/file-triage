@@ -46,8 +46,8 @@ Gap analysis between **current implementation** and **specification documents** 
 - [x] **Deployment approach:** Canonical (Electron + brew cask) chosen and documented in DETAILED_DESIGN § Deployment.
 - [x] **Electron shell:** App runs inside Electron (wrap existing backend + frontend). Minimal window, load the Explorer UI; backend (Flask or equivalent) runs locally inside the app or is served by the same process.
 - [x] **Build:** macOS artifact (`.app` in `.dmg` or `.zip`) produced via standard tool (e.g. `electron-builder`). Build is repeatable (e.g. from `npm run build` or CI script).
-- [ ] **Publish:** Artifact hosted at a stable, versioned URL (e.g. GitHub Releases). Pipeline creates the release and uploads the artifact.
-- [ ] **Cask:** A Homebrew Cask exists that points at the release URL (either in a dedicated tap repo or prepared for submission to homebrew-cask). Cask includes `version`, `sha256`, `url`, `name`, `desc`, `homepage`, `app`.
+- [x] **Publish:** Artifact hosted at a stable, versioned URL (e.g. GitHub Releases). Pipeline creates the release and uploads the artifact.
+- [x] **Cask:** A Homebrew Cask exists that points at the release URL (either in a dedicated tap repo or prepared for submission to homebrew-cask). Cask includes `version`, `sha256`, `url`, `name`, `desc`, `homepage`, `app`.
 - [x] **CI/CD pipeline:** End-to-end workflow runs on push/tag (e.g. GitHub Actions): build Electron app → run tests → create release + upload artifact → (if using a tap) update cask and push. Pipeline is documented (e.g. in README or `.github/workflows`).
 - [ ] **Hello-world MVP:** Full run through the pipeline; install the app via `brew install --cask <cask>` (or run the built `.app`/`.dmg`) and verify it launches. Prerequisite satisfied; development unblocked for Iteration 2+.
 - [ ] No further development iterations (e.g. Iteration 2+) are started until this gate is satisfied. If midstream on an iteration (e.g. Iteration 1), complete it first, then complete this deployment iteration.

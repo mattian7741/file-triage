@@ -46,3 +46,4 @@ Produces `dist/File Triage-0.1.0.dmg` and `.zip`. The app bundles the Python sou
 
 - **Canonical strategy:** Build → publish to stable URL (e.g. GitHub Releases) → distribute via Homebrew Cask. See CODING_STANDARDS § Canonical deployment strategy and BACKLOG § Deployment iteration.
 - **Pipeline:** `.github/workflows/build-release.yml` builds the macOS app on release; attach the DMG/zip to the release for the Cask URL.
+- **Cask:** A Cask file is in `Casks/file-triage.rb`. To use it: create a tap repo (e.g. `homebrew-tap`) with a `Casks/` dir, copy the Cask there, set the real `sha256` after the first build (see comment in the file), then `brew tap yourname/tap` and `brew install --cask file-triage`. Or submit the Cask to [homebrew-cask](https://github.com/Homebrew/homebrew-cask).

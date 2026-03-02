@@ -1,0 +1,35 @@
+{
+  "name": "file-triage",
+  "version": "0.1.0",
+  "description": "Desktop file triage — analyse and organise chaotic file collections (Electron + Explorer UI)",
+  "main": "electron/main.js",
+  "author": "",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0"
+  },
+  "build": {
+    "appId": "com.file-triage.app",
+    "productName": "File Triage",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"]
+    },
+    "dmg": {
+      "title": "File Triage ${version}"
+    },
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      { "from": "src", "to": "app/src" },
+      { "from": "pyproject.toml", "to": "app/" }
+    ]
+  }
+}

@@ -27,5 +27,10 @@ file-triage.db
 *.egg-info/
 *.egg
 
+# Electron / Node
+node_modules/
+dist/
+out/
+
 # Optional: uncomment if you want to track .python-version
 # !.python-version

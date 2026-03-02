@@ -32,6 +32,12 @@ Technical approach and implementation strategy for iterations. Driven by BACKLOG
 
 This project is a desktop app that runs inside Electron. We use the **canonical deployment strategy** for desktop apps (CODING_STANDARDS § Canonical deployment strategy): build the Electron app to a macOS artifact, publish to a stable URL, distribute via Homebrew Cask. No custom or no-deployment justification; DETAILED_DESIGN and BACKLOG § Deployment iteration capture the concrete tasks to implement the pipeline and hello-world MVP.
 
+**Implemented (Deployment iteration):**
+- **Electron shell:** `electron/main.js` spawns the Flask backend (`python3 -m file_triage.cli explorer --port 5001`), waits for server ready, opens `BrowserWindow` to `http://127.0.0.1:5001`. On window close, backend process is killed. Dev: `npm start`; PYTHONPATH set to project `src` when not packaged.
+- **Build:** `package.json` + `electron-builder`; `npm run build` produces macOS `.dmg` and `.zip`. Python app is copied into app via `extraResources` (src → resources/app/src, pyproject.toml → resources/app) so the packaged app can run `python3 -m file_triage.cli` from the bundle (system Python required unless a bundled Python is added later).
+- **CI/CD:** `.github/workflows/build-release.yml` runs on release publish: checkout, setup Python + Node, `pip install -e .`, `npm ci`, `npm run build`, upload `dist/*.dmg` and `dist/*.zip` to the GitHub Release. Release URL is the stable URL for the Cask.
+- **Cask:** To be added (own tap or homebrew-cask); Cask points at the release asset URL. See BACKLOG § Deployment iteration.
+
 ---
 
 ## (Further sections by topology/feature as iterations are designed)

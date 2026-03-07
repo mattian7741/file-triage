@@ -57,11 +57,19 @@ def create_app(
             response.headers[REQUEST_ID_HEADER] = rid
             if request.path.startswith("/api/"):
                 _log.info("request_id=%s path=%s method=%s status=%s", rid, request.path, request.method, response.status_code)
+        # Prevent caching of app.js so updates are always loaded
+        if request.path == "/app.js" or request.path.startswith("/app.js?"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
         return response
 
     @app.route("/")
     def index() -> str:
         html = (_STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        # Cache-bust app.js so browser gets latest after updates
+        app_js = _STATIC_DIR / "app.js"
+        v = int(app_js.stat().st_mtime) if app_js.exists() else ""
+        html = html.replace('src="/app.js"', f'src="/app.js?v={v}"')
         return html
 
     @app.route("/api/roots")
@@ -755,12 +763,16 @@ def create_app(
                 if not is_path_allowed(Path(vpath_str), roots):
                     return error_response("VPATH_NOT_ALLOWED", "vpath not allowed", 403)
             job_id = (data.get("job_id") or "").strip() or None
+            if job_id is None:
+                job_id = (request.headers.get("X-Job-Id") or "").strip() or None
+            if job_id is None:
+                _log.warning("move request received with no job_id; path=%s (client may be using cached JS)", path_raw)
             try:
                 _meta.set_vpath(path_raw, vpath_str, job_id)
             except ValueError as e:
                 _log.warning("Move conflict: %s", e)
                 return error_response("CONFLICT", "Conflict (e.g. destination exists)", 409)
-            return jsonify({"path": path_raw, "vpath": vpath_str}), 200
+            return jsonify({"path": path_raw, "vpath": vpath_str, "job_id": job_id}), 200
 
         @app.route("/api/generate-commands")
         def api_generate_commands():

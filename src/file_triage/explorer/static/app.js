@@ -74,6 +74,14 @@
     });
   }
 
+  function updateCurrentJobDisplay() {
+    var el = document.getElementById("currentJobIdDisplay");
+    if (!el) return;
+    var jid = currentJobId || "";
+    el.textContent = jid ? "Job " + (jid.length >= 8 ? jid.slice(0, 8) : jid) : "";
+    el.title = jid ? "Current job (moves go here): " + jid : "Current job";
+  }
+
   var STORAGE_KEY = "file-triage-explorer-state";
 
   function getPersistedState() {
@@ -153,11 +161,14 @@
         var o = JSON.parse(raw);
         if (o && typeof o === "object" && typeof o.currentJobId === "string" && o.currentJobId) {
           currentJobId = o.currentJobId;
+          updateCurrentJobDisplay();
           return;
         }
       }
     } catch (e) {}
     currentJobId = generateJobId();
+      updateCurrentJobDisplay();
+    updateCurrentJobDisplay();
   })();
 
   function api(path) {
@@ -168,9 +179,10 @@
   function apiMove(path, vpath) {
     var jid = currentJobId || generateJobId();
     if (!currentJobId) currentJobId = jid;
+    var headers = { "Content-Type": "application/json", "X-Job-Id": jid };
     return fetch(api("move"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: headers,
       body: JSON.stringify({ path: path, vpath: vpath || "", job_id: jid }),
     });
   }
@@ -2644,6 +2656,7 @@
       e.stopPropagation();
       userClickedNewJob = true;
       currentJobId = generateJobId();
+      updateCurrentJobDisplay();
       saveStateDebounced();
       refreshChangesPane();
     }
@@ -2706,6 +2719,7 @@
         var state = getPersistedState();
         applyPersistedState(state);
         if (!currentJobId) currentJobId = generateJobId();
+      updateCurrentJobDisplay();
         currentPath = currentPathLeft || currentPath;
         if (hideTrashCheckboxEl) hideTrashCheckboxEl.checked = showTrashed;
         if (showNullTagsCheckboxEl) showNullTagsCheckboxEl.checked = showNullTags;

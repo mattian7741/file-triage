@@ -8,6 +8,8 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Relationship to ../core-documentation/CODING_STANDARDS.md:** BACKLOG defines **what** (outcomes, deliverables, iteration scope). ../core-documentation/CODING_STANDARDS.md defines **how** (implementation approach). The two are orthogonal: apply coding standards when implementing backlog items; do not embed coding strategy inside backlog tasks.
 
+**Per-iteration workflow:** For each iteration: (1) update version in package.json, (2) merge, (3) commit, (4) push. CI creates a Git tag from the version; bumping ensures the tag does not already exist.
+
 ---
 
 ## Gap summary (implementation vs spec)

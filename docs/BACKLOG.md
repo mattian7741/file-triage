@@ -15,7 +15,7 @@ Gap analysis between **current implementation** and **specification documents** 
 | Area | Spec | Current implementation | Gap |
 |------|------|------------------------|-----|
 | **Path / vpath** | effective_path = vpath ?? path; set_vpath normalizes and persists; move/rename/delete/restore = set_vpath only | set_vpath in meta/db.py with normalize; move/rename/trash/restore call it | Aligned. Naming in code comments could say "set_vpath" / "set location". |
-| **Tags** | (Hard ∪ Soft) ∖ Negation; soft from **parent only** + rules; four states: soft, hard, negation, absent | effective_tags(explicit, inherited, nulls); get_ancestor_tags = **parent + all ancestors**; API/DB use "null" | Inheritance is ancestor chain (spec: parent only). Naming: "null" vs "negation". |
+| **Tags** | (Hard ∪ Soft) ∖ Negation; soft from **parent only** + rules; four states: soft, hard, negation, absent | effective_tags(explicit, inherited, nulls); get_parent_effective_tags = parent only; API/DB use "null" | Aligned (parent-only). Naming: "null" vs "negation" (Iteration 6). |
 | **Entry building** | Single logical path for entry + tags + empty | Duplicated "get_tags, get_tag_nulls, get_tags_from_rules, get_ancestor_tags → build" in listing, tagged, tag-search | Consolidate to one path (see REFACTOR_ITERATION_PLAN Iteration 4). |
 | **Empty** | folder_empty and file_empty depend on show_trashed; child-by-path only when vpath null or show_trashed | compute_empty is model-level (no show_trashed); frontend uses entry.empty | Align: document model vs view empty; frontend "empty" = no visible children after filter; file empty = size==0 or (vpath && !showTrashed). |
 | **Visibility** | Render-time only; backend returns full data | Backend passes hide_tags=set(); show_null_tagged=True always | Aligned. |
@@ -99,10 +99,10 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** Soft tags from **parent only** (spec). Parent's negation → child has absent, not negation. Medium blast radius (behavior change for deep hierarchies).
 
-- [ ] Parent-only tag source exists: soft for a path = effective set of parent ∪ rule-matched tags. No ancestor chain.
-- [ ] Tag-resolution path (Iteration 2) uses parent-only semantics; parent's negation implies child has absent for that tag (parent effective set excludes it).
-- [ ] Former ancestor-chain call sites removed or switched to parent-only path.
-- [ ] Tests: parent has tag T → child has soft T; parent has negation T → child absent for T; grandparent has T, parent has negation T → child absent for T.
+- [x] Parent-only tag source exists: soft for a path = effective set of parent ∪ rule-matched tags. No ancestor chain.
+- [x] Tag-resolution path (Iteration 2) uses parent-only semantics; parent's negation implies child has absent for that tag (parent effective set excludes it).
+- [x] Former ancestor-chain call sites removed or switched to parent-only path.
+- [x] Tests: parent has tag T → child has soft T; parent has negation T → child absent for T; grandparent has T, parent has negation T → child absent for T.
 
 **Deliverables:** Inheritance is parent-only and spec-aligned; no ancestor-chain usage.
 
@@ -137,7 +137,21 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 8 — SRS: regex_path search type
+## Iteration 8 — Background search jobs
+
+**Goal:** Run search as a background process so the user can navigate away without losing context. Search jobs are persistent, trackable, and viewable (complete or partial). Stopping a search stops the action but leaves results under that job.
+
+- [ ] Search executes as a background process; user can navigate to folders or other views without aborting the search.
+- [ ] Each search is tracked as a job with a clickable entry; user can return to view results when complete or partially complete.
+- [ ] Stop search: stops the search action; results remain (partial) under that job and stay viewable.
+- [ ] Search jobs are persistent (survive navigation, reload, or session end—scope TBD).
+- [ ] Each search job has a trash-can icon/button to delete it; deleted jobs are removed from the list.
+
+**Deliverables:** Background search execution; job list with click-to-view results; stop leaves partial results; persistence; delete control.
+
+---
+
+## Iteration 9 — SRS: regex_path search type
 
 **Goal:** One additional search type (regex on path) so SRS is not only tag-search; result set is model-level; show_trashed affects display only.
 
@@ -149,7 +163,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 9 — Toggle placement (scope-local vs global)
+## Iteration 10 — Toggle placement (scope-local vs global)
 
 **Goal:** Scope-local toggles (e.g. show_negation) appear in the pane whose scope they affect; global toggles (show_trashed, hidden_tag_set) remain in shared UI. Optional / lower priority.
 
@@ -162,7 +176,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 10 — Testing and contract stability
+## Iteration 11 — Testing and contract stability
 
 **Goal:** Tests lock spec-aligned behavior and prevent regression. Can run in parallel or after Iterations 1–5.
 
@@ -174,7 +188,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 11 — Module and file organization (optional)
+## Iteration 12 — Module and file organization (optional)
 
 **Goal:** Clear module boundaries; one primary concern per file where practical; reduced overload.
 
@@ -202,10 +216,11 @@ Iteration 5 (parent-only inheritance)           ← behavior change, medium radi
 Iteration 6 (null → negation naming)           ← API/types/docs
     ↓
 Iteration 7 (Apply: generate commands)          ← new capability; after 6 to keep meta stable
-Iteration 8 (regex_path search)                 ← new feature
-Iteration 9 (toggle placement)                  ← UI reorg, optional
-Iteration 10 (testing)                           ← can run in parallel after 2–4
-Iteration 11 (module organization)                ← optional, after 2
+Iteration 8 (background search jobs)            ← search UX: persistent jobs, click to view, stop leaves partial
+Iteration 9 (regex_path search)                 ← new feature
+Iteration 10 (toggle placement)                 ← UI reorg, optional
+Iteration 11 (testing)                           ← can run in parallel after 2–4
+Iteration 12 (module organization)               ← optional, after 2
 ```
 
 **Midstream rule:** If already in progress on an iteration (e.g. Iteration 1), finish it; then do the **Deployment iteration** before starting Iteration 2.

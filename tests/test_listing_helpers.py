@@ -9,6 +9,8 @@ from file_triage.explorer.listing_helpers import (
     build_listing_entry_from_meta,
     compute_empty,
 )
+from file_triage.meta import init_db, add_tag, add_tag_null
+from file_triage.meta.accessor import MetaAccessor
 
 
 class TestResolveTags:
@@ -24,31 +26,75 @@ class TestResolveTags:
         acc = MagicMock()
         acc.get_tags.return_value = ["a", "b"]
         acc.get_tags_from_rules.return_value = []
-        acc.get_ancestor_tags.return_value = []
+        acc.get_parent_effective_tags.return_value = []
         acc.get_tag_nulls.return_value = []
         tags, inherited, nulls = resolve_tags(acc, "/p")
         assert tags == ["a", "b"]
         acc.get_tags.assert_called_once_with("/p")
 
-    def test_combines_rules_and_ancestors_for_inherited(self):
+    def test_combines_rules_and_parent_for_inherited(self):
         acc = MagicMock()
         acc.get_tags.return_value = []
         acc.get_tags_from_rules.return_value = ["r1"]
-        acc.get_ancestor_tags.return_value = ["a1"]
+        acc.get_parent_effective_tags.return_value = ["a1"]
         acc.get_tag_nulls.return_value = []
         _, inherited, _ = resolve_tags(acc, "/p", scope_for_rules="/scope")
         assert set(inherited) == {"r1", "a1"}
         acc.get_tags_from_rules.assert_called_once_with("/scope")
-        acc.get_ancestor_tags.assert_called_once_with("/p")
+        acc.get_parent_effective_tags.assert_called_once_with("/p")
 
     def test_returns_nulls(self):
         acc = MagicMock()
         acc.get_tags.return_value = []
         acc.get_tags_from_rules.return_value = []
-        acc.get_ancestor_tags.return_value = []
+        acc.get_parent_effective_tags.return_value = []
         acc.get_tag_nulls.return_value = ["n1"]
         _, _, nulls = resolve_tags(acc, "/p")
         assert nulls == ["n1"]
+
+
+class TestParentOnlyInheritance:
+    """Parent-only inheritance: soft from parent's effective set; parent's negation → child absent."""
+
+    def test_parent_has_tag_child_has_soft(self, tmp_path):
+        """Parent has tag T → child has soft T."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" in inherited
+
+    def test_parent_has_negation_child_absent(self, tmp_path):
+        """Parent has negation T → child absent for T."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag_null
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag_null(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" not in inherited
+
+    def test_grandparent_has_tag_parent_negation_child_absent(self, tmp_path):
+        """Grandparent has T, parent has negation T → child absent for T."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag, add_tag_null
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag(db_path, tmp_path / "a", "T")
+        add_tag_null(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" not in inherited
 
 
 class TestBuildListingEntryFromMeta:
@@ -76,7 +122,7 @@ class TestBuildListingEntryFromMeta:
         acc = MagicMock()
         acc.get_tags.return_value = ["a"]
         acc.get_tags_from_rules.return_value = []
-        acc.get_ancestor_tags.return_value = []
+        acc.get_parent_effective_tags.return_value = []
         acc.get_tag_nulls.return_value = []
         entry = build_listing_entry_from_meta(
             acc,
@@ -150,6 +196,50 @@ class TestBuildListingEntryFromMeta:
         )
         assert entry["vpath"] == "/v/p"
         assert entry["display_style"] == "moved_here"
+
+
+class TestParentOnlyInheritance:
+    """Parent-only inheritance: soft from parent's effective set; parent's negation → child absent."""
+
+    def test_parent_has_tag_t_child_has_soft_t(self, tmp_path):
+        """Parent has tag T → child has soft T (in inherited)."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" in inherited
+
+    def test_parent_has_negation_t_child_absent_for_t(self, tmp_path):
+        """Parent has negation T → child absent for T (T not in inherited)."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag_null
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag_null(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" not in inherited
+
+    def test_grandparent_has_t_parent_has_negation_t_child_absent(self, tmp_path):
+        """Grandparent has T, parent has negation T → child absent for T."""
+        (tmp_path / "a" / "b" / "c").mkdir(parents=True)
+        db_path = tmp_path / "meta.db"
+        from file_triage.meta import init_db, add_tag, add_tag_null
+        from file_triage.meta.accessor import MetaAccessor
+
+        init_db(db_path)
+        add_tag(db_path, tmp_path / "a", "T")
+        add_tag_null(db_path, tmp_path / "a" / "b", "T")
+        acc = MetaAccessor(db_path)
+        _, inherited, _ = resolve_tags(acc, str(tmp_path / "a" / "b" / "c"))
+        assert "T" not in inherited
 
 
 class TestComputeEmpty:

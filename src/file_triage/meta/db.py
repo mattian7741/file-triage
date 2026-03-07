@@ -609,7 +609,7 @@ def get_tags_from_rules(db_path: Path, path: str) -> list[str]:
 def get_ancestor_tags(db_path: Path, path: str | Path) -> list[str]:
     """
     Return tags from the path's parent and all ancestors (grandparent, etc.).
-    Used for soft-tag inheritance: children inherit tags from parent and above.
+    DEPRECATED: Use get_parent_effective_tags for spec-aligned parent-only inheritance.
     """
     p = Path(path).resolve()
     parent = p.parent
@@ -623,6 +623,26 @@ def get_ancestor_tags(db_path: Path, path: str | Path) -> list[str]:
         p = parent
         parent = p.parent
     return result
+
+
+def get_parent_effective_tags(db_path: Path, path: str | Path) -> list[str]:
+    """
+    Return effective tags of the path's parent only (parent-only inheritance per spec).
+    soft(child) = effective_tags(parent) ∪ rule_matched_tags(child).
+    Parent's negation for T gives child absent for T (T not in parent's effective set).
+    """
+    p = Path(path).resolve()
+    parent = p.parent
+    if parent == p:
+        return []
+    parent_str = str(parent)
+    explicit = get_tags(db_path, parent_str)
+    nulls = get_tag_nulls(db_path, parent_str)
+    from_rules = get_tags_from_rules(db_path, parent_str)
+    from_grandparent = get_parent_effective_tags(db_path, parent_str)
+    inherited = list(dict.fromkeys(from_rules + from_grandparent))
+    effective = (set(explicit) | set(inherited)) - set(nulls)
+    return list(effective)
 
 
 def get_all_rules(db_path: Path) -> list[dict]:

@@ -46,6 +46,10 @@ class MetaAccessor:
     def get_ancestor_tags(self, path: str | Path) -> list[str]:
         return db.get_ancestor_tags(self._db_path, path)
 
+    def get_parent_effective_tags(self, path: str | Path) -> list[str]:
+        """Parent-only inheritance: effective tags of the path's parent."""
+        return db.get_parent_effective_tags(self._db_path, path)
+
     def get_paths_by_tag(self, tag: str) -> list[str]:
         return db.get_paths_by_tag(self._db_path, tag)
 

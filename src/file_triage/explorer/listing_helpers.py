@@ -21,7 +21,8 @@ def resolve_tags(
     """
     Single tag-resolution path: given path and accessor, return (hard, inherited, negation).
 
-    Inherited = rules-matched tags + ancestor tags (parent-chain semantics; unchanged in this iteration).
+    Inherited = rules-matched tags + parent's effective tags (parent-only semantics).
+    Parent's negation for T gives child absent for T (T excluded from parent's effective set).
     When meta_accessor is None, returns ([], [], []).
     """
     if meta_accessor is None:
@@ -29,8 +30,8 @@ def resolve_tags(
     scope = scope_for_rules if scope_for_rules is not None else path_str
     explicit = meta_accessor.get_tags(path_str)
     from_rules = meta_accessor.get_tags_from_rules(scope)
-    from_ancestors = meta_accessor.get_ancestor_tags(path_str)
-    inherited = list(dict.fromkeys(from_rules + from_ancestors))
+    from_parent = meta_accessor.get_parent_effective_tags(path_str)
+    inherited = list(dict.fromkeys(from_rules + from_parent))
     nulls = meta_accessor.get_tag_nulls(path_str)
     return (explicit, inherited, nulls)
 

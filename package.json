@@ -26,6 +26,7 @@
       "title": "File Triage ${version}"
     },
     "files": [
+      "package.json",
       "electron/**/*"
     ],
     "extraResources": [

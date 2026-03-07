@@ -155,11 +155,12 @@ def add_tag(db_path: Path, path: str | Path, tag: str) -> None:
     device = _to_sqlite_int(device)
     existing = get_path_meta(db_path, path_str)
     vpath = existing.get("vpath") if existing else None
+    job_id = existing.get("job_id") if existing else None
     conn = _conn(db_path)
     try:
         conn.execute(
-            "INSERT OR REPLACE INTO meta (path, inode, device, updated_at, vpath) VALUES (?, ?, ?, ?, ?)",
-            (path_str, inode, device, _now(), vpath),
+            "INSERT OR REPLACE INTO meta (path, inode, device, updated_at, vpath, job_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (path_str, inode, device, _now(), vpath, job_id),
         )
         conn.execute("DELETE FROM tag_nulls WHERE path = ? AND tag = ?", (path_str, tag))
         conn.execute("INSERT OR IGNORE INTO tags (path, tag) VALUES (?, ?)", (path_str, tag))
@@ -310,6 +311,7 @@ def remove_tag_null(db_path: Path, path: str | Path, tag: str) -> None:
         return
     existing = get_path_meta(db_path, path_str)
     vpath = existing.get("vpath") if existing else None
+    job_id = existing.get("job_id") if existing else None
     conn = _conn(db_path)
     try:
         conn.execute("DELETE FROM tag_nulls WHERE path = ? AND tag = ?", (path_str, tag))
@@ -317,8 +319,8 @@ def remove_tag_null(db_path: Path, path: str | Path, tag: str) -> None:
         inode = _to_sqlite_int(inode)
         device = _to_sqlite_int(device)
         conn.execute(
-            "INSERT OR REPLACE INTO meta (path, inode, device, updated_at, vpath) VALUES (?, ?, ?, ?, ?)",
-            (path_str, inode, device, _now(), vpath),
+            "INSERT OR REPLACE INTO meta (path, inode, device, updated_at, vpath, job_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (path_str, inode, device, _now(), vpath, job_id),
         )
         conn.execute("INSERT OR IGNORE INTO tags (path, tag) VALUES (?, ?)", (path_str, tag))
         conn.commit()
@@ -542,12 +544,12 @@ def get_meta_by_vpath(db_path: Path, vpath: str | Path) -> Optional[dict]:
 
 
 def get_path_meta(db_path: Path, path: str | Path) -> Optional[dict]:
-    """Return meta row for path if it exists: { path, inode, device, updated_at, vpath }. Else None."""
+    """Return meta row for path if it exists: { path, inode, device, updated_at, vpath, job_id }. Else None."""
     path_str = _path_key(path)
     conn = _conn(db_path)
     try:
         cur = conn.execute(
-            "SELECT path, inode, device, updated_at, vpath FROM meta WHERE path = ?",
+            "SELECT path, inode, device, updated_at, vpath, job_id FROM meta WHERE path = ?",
             (path_str,),
         )
         row = cur.fetchone()
@@ -559,6 +561,7 @@ def get_path_meta(db_path: Path, path: str | Path) -> Optional[dict]:
             "device": row[2],
             "updated_at": row[3],
             "vpath": row[4] if len(row) > 4 else None,
+            "job_id": row[5] if len(row) > 5 else None,
         }
     finally:
         conn.close()

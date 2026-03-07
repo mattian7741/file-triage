@@ -62,6 +62,7 @@
   var lastViewDataRight = null;
   var previewSelectedPath = null;
   var currentJobId = null;  // UUID for grouping moves; null until first use or persisted
+  var userClickedNewJob = false;  // Prevents applyPersistedState from overwriting after "New job" click
 
   var pendingRenameTimeout = null;
 
@@ -141,7 +142,7 @@
     if (state.currentTag !== undefined) currentTag = state.currentTag;
     if (typeof state.isTagSearchView === "boolean") isTagSearchView = state.isTagSearchView;
     if (state.currentSearchMode === "matches" || state.currentSearchMode === "contains") currentSearchMode = state.currentSearchMode;
-    if (typeof state.currentJobId === "string" && state.currentJobId) currentJobId = state.currentJobId;
+    if (!userClickedNewJob && typeof state.currentJobId === "string" && state.currentJobId) currentJobId = state.currentJobId;
   }
 
   /** Initialize currentJobId synchronously so it exists before any async init or user action. */
@@ -2641,6 +2642,7 @@
     if (btn) {
       e.preventDefault();
       e.stopPropagation();
+      userClickedNewJob = true;
       currentJobId = generateJobId();
       saveStateDebounced();
       refreshChangesPane();

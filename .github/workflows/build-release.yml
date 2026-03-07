@@ -105,8 +105,8 @@ jobs:
           SHA256="${{ needs.build-mac.outputs.sha256 }}"
           ASSET="${{ needs.build-mac.outputs.asset_name }}"
           RELEASE_TAG="${{ needs.build-mac.outputs.release_tag }}"
-          # URL-encode spaces in asset filename for GitHub release URL
-          ASSET_URL=$(echo "$ASSET" | sed 's/ /%20/g')
+          # GitHub serves assets with spaces normalized to dots (File Triage -> File.Triage)
+          ASSET_URL=$(echo "$ASSET" | sed 's/ /\./g')
           CASK="homebrew-tap/Casks/file-triage.rb"
           URL="https://github.com/mattian7741/file-triage/releases/download/${RELEASE_TAG}/${ASSET_URL}"
           sed -i.bak -e "s|version \".*\"|version \"${VERSION}\"|" \

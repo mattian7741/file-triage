@@ -51,6 +51,8 @@
   let isTagSearchView = false;
   let tagSearchAbortController = null;
   var currentSearchMode = "matches";  // "matches" | "contains" when in tag search
+  var lastSearchTag = null;  // Preserved when navigating away so user can return to search results
+  var lastSearchMode = "matches";
   let previewPaneCollapsed = false;
   let hiddenTagSet = new Set();
   let draggedFromPane = null;  // "left" | "right" while drag in progress; used to remove scope tag when moving out of TS
@@ -523,6 +525,29 @@
   function restoreTagsSearchInput() {
     const wrap = document.getElementById("searchWrap");
     if (wrap) addTagsSearchInputTo(wrap);
+  }
+
+  function restoreSearchWrapWithBackLink(tag, mode) {
+    const wrap = document.getElementById("searchWrap");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    wrap.className = "tags-search-wrap search-row";
+    var modeLabel = (mode === "contains") ? "Contains" : "Matches";
+    var backLink = document.createElement("a");
+    backLink.href = "#";
+    backLink.className = "search-back-link";
+    backLink.textContent = "View " + tag + " (" + modeLabel.toLowerCase() + ") results";
+    backLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      doTagSearch(tag);
+    });
+    wrap.appendChild(backLink);
+    var searchPart = document.createElement("div");
+    searchPart.className = "search-row";
+    wrap.appendChild(searchPart);
+    addTagsSearchInputTo(searchPart);
+    var modeSelect = wrap.querySelector(".search-mode-select");
+    if (modeSelect && (mode === "matches" || mode === "contains")) modeSelect.value = mode;
   }
 
   function refreshTagsSection() {
@@ -1887,8 +1912,22 @@
     var p = path || "/";
     const isRefresh = (p === currentPathForPane && !currentTag);
     const savedScroll = isRefresh ? listEl.scrollTop : null;
+    var wasInSearch = isTagSearchView && currentTag;
+    var prevSearchTag = currentTag;
+    var prevSearchMode = currentSearchMode;
+    if (wasInSearch && tagSearchAbortController) {
+      tagSearchAbortController.abort();
+      tagSearchAbortController = null;
+    }
     currentTag = null;
+    isTagSearchView = false;
+    if (wasInSearch && prevSearchTag && pane === "left") {
+      lastSearchTag = prevSearchTag;
+      lastSearchMode = prevSearchMode;
+      restoreSearchWrapWithBackLink(prevSearchTag, prevSearchMode);
+    }
     setCurrentPath(p, pane);
+    updateDropzoneLabels();
     selectedPaths.clear();
     updateSelectionBar();
     clearPreview();

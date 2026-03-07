@@ -165,6 +165,17 @@ body {
   gap: 8px;
 }
 
+.search-back-link {
+  font-size: 12px;
+  color: #0066cc;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.search-back-link:hover {
+  text-decoration: underline;
+}
+
 .search-mode-select {
   font-size: 12px;
   padding: 6px 8px;

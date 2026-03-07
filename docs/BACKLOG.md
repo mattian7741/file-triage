@@ -120,7 +120,24 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 7 — SRS: regex_path search type
+## Iteration 7 — Apply: generate filesystem commands (no execution)
+
+**Goal:** The app is a pure overlay—vpath changes do not mutate the filesystem. Add the ability to **generate** (not execute) a list of filesystem commands that would materialize pending changes. Commands should be as transactional and reversible as possible. Trash is already covered; focus on moves/copies that could leave the filesystem in a partial state if interrupted.
+
+**Initial scope:** Generate the instruction list only. No execution. User can review commands before a future iteration adds execution.
+
+- [ ] **job_id:** Add `job_id` column to meta table (nullable; discriminator for grouping changes). New vpath writes can be associated with a job. Jobs can be applied one at a time.
+- [ ] **Generate commands:** API or module that, given a job_id (or "all pending"), produces an ordered list of filesystem instructions (e.g. `mv`, `cp`, `rsync`—choose the most stable/transactional option). Instructions are idempotent where possible; partial completion should leave a recoverable state.
+- [ ] **Contract:** Document the generated-command format (e.g. `{ op, src, dst, job_id }`). No execution in this iteration.
+- [ ] **Future options (out of scope):** Execute staged changes; generate + review + accept each command; undo/rollback. Document as follow-on iterations.
+
+**Design note (rollback):** We may implement an entire subtree in the filesystem as a backup structure to support rollback. Design this before implementation if we use it.
+
+**Deliverables:** job_id in meta; generate-commands API or function; contract for command shape. No UI execution.
+
+---
+
+## Iteration 8 — SRS: regex_path search type
 
 **Goal:** One additional search type (regex on path) so SRS is not only tag-search; result set is model-level; show_trashed affects display only.
 
@@ -132,7 +149,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 8 — Toggle placement (scope-local vs global)
+## Iteration 9 — Toggle placement (scope-local vs global)
 
 **Goal:** Scope-local toggles (e.g. show_negation) appear in the pane whose scope they affect; global toggles (show_trashed, hidden_tag_set) remain in shared UI. Optional / lower priority.
 
@@ -145,7 +162,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 9 — Testing and contract stability
+## Iteration 10 — Testing and contract stability
 
 **Goal:** Tests lock spec-aligned behavior and prevent regression. Can run in parallel or after Iterations 1–5.
 
@@ -157,7 +174,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 10 — Module and file organization (optional)
+## Iteration 11 — Module and file organization (optional)
 
 **Goal:** Clear module boundaries; one primary concern per file where practical; reduced overload.
 
@@ -184,10 +201,11 @@ Iteration 4 (contains mode no-op)               ← small frontend
 Iteration 5 (parent-only inheritance)           ← behavior change, medium radius
 Iteration 6 (null → negation naming)           ← API/types/docs
     ↓
-Iteration 7 (regex_path search)                 ← new feature
-Iteration 8 (toggle placement)                  ← UI reorg, optional
-Iteration 9 (testing)                           ← can run in parallel after 2–4
-Iteration 10 (module organization)                ← optional, after 2
+Iteration 7 (Apply: generate commands)          ← new capability; after 6 to keep meta stable
+Iteration 8 (regex_path search)                 ← new feature
+Iteration 9 (toggle placement)                  ← UI reorg, optional
+Iteration 10 (testing)                           ← can run in parallel after 2–4
+Iteration 11 (module organization)                ← optional, after 2
 ```
 
 **Midstream rule:** If already in progress on an iteration (e.g. Iteration 1), finish it; then do the **Deployment iteration** before starting Iteration 2.

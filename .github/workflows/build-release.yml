@@ -91,7 +91,6 @@ jobs:
   update-cask:
     needs: build-mac
     runs-on: ubuntu-latest
-    if: secrets.HOMEBREW_TAP_TOKEN != ''
     steps:
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4

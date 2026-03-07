@@ -184,6 +184,14 @@
       method: "POST",
       headers: headers,
       body: JSON.stringify({ path: path, vpath: vpath || "", job_id: jid }),
+    }).then(function (r) {
+      var clone = r.clone();
+      clone.json().then(function (data) {
+        if (jid && data && (data.job_id === null || data.job_id === undefined || data.job_id === "")) {
+          console.warn("[file-triage] Move stored without job_id; we sent:", jid, "response:", data);
+        }
+      }).catch(function () {});
+      return r;
     });
   }
 
@@ -1561,6 +1569,9 @@
       .then(function (r) { if (!r.ok) throw new Error(r.statusText); return r.json(); })
       .then(function (data) {
         var lines = (data.changes || []).slice();
+        if (lines.length > 0 && typeof console !== "undefined" && console.debug) {
+          console.debug("[file-triage] changes:", lines.slice(0, 5).map(function (l) { return { path: l.path, job_id: l.job_id }; }));
+        }
         lines.sort(function (a, b) {
           var c = (a.path || "").localeCompare(b.path || "");
           if (c !== 0) return c;

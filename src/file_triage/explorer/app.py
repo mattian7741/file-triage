@@ -767,6 +767,8 @@ def create_app(
                 job_id = (request.headers.get("X-Job-Id") or "").strip() or None
             if job_id is None:
                 _log.warning("move request received with no job_id; path=%s (client may be using cached JS)", path_raw)
+            else:
+                _log.info("move job_id=%s path=%s vpath=%s", job_id[:8] if len(job_id) >= 8 else job_id, path_raw, vpath_str)
             try:
                 _meta.set_vpath(path_raw, vpath_str, job_id)
             except ValueError as e:

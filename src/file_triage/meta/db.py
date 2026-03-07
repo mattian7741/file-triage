@@ -568,14 +568,19 @@ def get_path_meta(db_path: Path, path: str | Path) -> Optional[dict]:
 
 
 def get_all_meta_for_debug(db_path: Path) -> list[dict]:
-    """Return all meta rows with path, vpath, inode (for debugging). Each dict: path, vpath, inode."""
+    """Return all meta rows with path, vpath, inode, job_id (for debugging)."""
     if not db_path or not Path(db_path).exists():
         return []
     conn = _conn(Path(db_path))
     try:
-        cur = conn.execute("SELECT path, vpath, inode FROM meta")
+        cur = conn.execute("SELECT path, vpath, inode, job_id FROM meta")
         return [
-            {"path": row[0], "vpath": row[1], "inode": row[2]}
+            {
+                "path": row[0],
+                "vpath": row[1],
+                "inode": row[2],
+                "job_id": row[3] if len(row) > 3 else None,
+            }
             for row in cur.fetchall()
         ]
     finally:

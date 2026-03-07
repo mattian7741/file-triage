@@ -144,17 +144,33 @@
     if (typeof state.currentJobId === "string" && state.currentJobId) currentJobId = state.currentJobId;
   }
 
+  /** Initialize currentJobId synchronously so it exists before any async init or user action. */
+  (function initCurrentJobIdEarly() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var o = JSON.parse(raw);
+        if (o && typeof o === "object" && typeof o.currentJobId === "string" && o.currentJobId) {
+          currentJobId = o.currentJobId;
+          return;
+        }
+      }
+    } catch (e) {}
+    currentJobId = generateJobId();
+  })();
+
   function api(path) {
     return path.startsWith("http") ? path : "/api/" + path;
   }
 
-  /** Call move API with current job_id. Returns fetch promise. */
+  /** Call move API with current job_id. Returns fetch promise. Always sends job_id (never omit). */
   function apiMove(path, vpath) {
-    if (!currentJobId) currentJobId = generateJobId();
+    var jid = currentJobId || generateJobId();
+    if (!currentJobId) currentJobId = jid;
     return fetch(api("move"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path: path, vpath: vpath || "", job_id: currentJobId }),
+      body: JSON.stringify({ path: path, vpath: vpath || "", job_id: jid }),
     });
   }
 
@@ -2620,14 +2636,16 @@
     btnClearSelectionEl.addEventListener("click", clearSelection);
   }
 
-  var btnNewJobEl = document.getElementById("btnNewJob");
-  if (btnNewJobEl) {
-    btnNewJobEl.addEventListener("click", function () {
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest("#btnNewJob") : (e.target && e.target.id === "btnNewJob" ? e.target : null);
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
       currentJobId = generateJobId();
       saveStateDebounced();
       refreshChangesPane();
-    });
-  }
+    }
+  });
 
   if (hideTrashCheckboxEl) {
     showTrashed = !!hideTrashCheckboxEl.checked;

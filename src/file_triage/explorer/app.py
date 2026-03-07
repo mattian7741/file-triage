@@ -17,7 +17,6 @@ from .errors import error_response
 from .validation import require_path, require_path_allowed, require_tag
 from .domain import effective_tags
 from .listing_helpers import (
-    compute_empty,
     build_listing_entry_from_meta,
     entry_effective_path,
 )
@@ -120,15 +119,15 @@ def create_app(
                         if is_virtual_child:
                             display_path = meta.get("vpath") or canon_path
                             p = Path(display_path)
-                            empty = not _meta.get_entries_by_vpath_parent(vpath_val)
                             entry = build_listing_entry_from_meta(
                                 _meta,
                                 canon_path,
                                 p.name,
                                 True,
                                 0,
-                                empty,
                                 hide_tags,
+                                path_obj=None,
+                                scope_for_vpath_children=vpath_val,
                                 display_style="moved_here",
                                 vpath=vpath_val,
                                 virtual=True,
@@ -144,19 +143,18 @@ def create_app(
                             if canon_p.exists():
                                 is_dir = canon_p.is_dir()
                                 size = 0 if is_dir else canon_p.stat().st_size
-                                empty = compute_empty(canon_p, is_dir, size, _meta, vpath_val)
                             else:
                                 is_dir = True
                                 size = 0
-                                empty = True
                             entry = build_listing_entry_from_meta(
                                 _meta,
                                 canon_path,
                                 Path(vpath_val).name,
                                 is_dir,
                                 size,
-                                empty,
                                 hide_tags,
+                                path_obj=canon_p if canon_p.exists() else None,
+                                scope_for_vpath_children=vpath_val,
                                 display_style="moved_here",
                                 vpath=vpath_val,
                                 scope_for_rules=vpath_val,
@@ -180,16 +178,15 @@ def create_app(
                                     continue
                                 is_dir = p.is_dir()
                                 if is_dir:
-                                    empty = compute_empty(p, True, 0, _meta, (_meta.get_path_meta(entry_path) or {}).get("vpath") or entry_path)
                                     size = 0
                                 else:
                                     try:
                                         size = p.stat().st_size
                                     except OSError:
                                         size = 0
-                                    empty = size == 0
                                 meta = _meta.get_path_meta(entry_path)
                                 scope_rules = (meta.get("vpath") if meta else None) or entry_path
+                                scope_vpath = (meta.get("vpath") if meta else None) or entry_path
                                 display_style = "original" if (meta and meta.get("vpath")) else "normal"
                                 entry_vpath = meta["vpath"] if meta and meta.get("vpath") else None
                                 entry = build_listing_entry_from_meta(
@@ -198,8 +195,9 @@ def create_app(
                                     p.name,
                                     is_dir,
                                     size,
-                                    empty,
                                     hide_tags,
+                                    path_obj=p,
+                                    scope_for_vpath_children=scope_vpath,
                                     display_style=display_style,
                                     vpath=entry_vpath,
                                     scope_for_rules=scope_rules,
@@ -222,23 +220,19 @@ def create_app(
                     entry_path = str(p.resolve())
                     if is_dir:
                         size = 0
-                        scope_vpath = None
-                        if _meta_db and _meta_db.exists() and _meta:
-                            meta = _meta.get_path_meta(entry_path)
-                            scope_vpath = (meta.get("vpath") if meta else None) or entry_path
-                        empty = compute_empty(p, True, 0, _meta, scope_vpath)
                     else:
                         try:
                             size = p.stat().st_size
                         except OSError:
                             size = 0
-                        empty = size == 0
                     scope_rules = None
+                    scope_vpath = None
                     display_style = "normal"
                     entry_vpath = None
                     if _meta:
                         meta = _meta.get_path_meta(entry_path)
                         scope_rules = (meta.get("vpath") if meta else None) or entry_path
+                        scope_vpath = scope_rules
                         if meta and meta.get("vpath"):
                             display_style = "original"
                             entry_vpath = meta["vpath"]
@@ -248,8 +242,9 @@ def create_app(
                         p.name,
                         is_dir,
                         size,
-                        empty,
                         hide_tags,
+                        path_obj=p,
+                        scope_for_vpath_children=scope_vpath,
                         display_style=display_style,
                         vpath=entry_vpath,
                         scope_for_rules=scope_rules,
@@ -277,15 +272,15 @@ def create_app(
                             continue
                         p = Path(display_path)
                         scope = meta.get("vpath") or display_path
-                        has_vpath_children = bool(_meta.get_entries_by_vpath_parent(scope))
                         entry = build_listing_entry_from_meta(
                             _meta,
                             meta_path,
                             p.name,
                             True,
                             0,
-                            not has_vpath_children,
                             hide_tags,
+                            path_obj=None,
+                            scope_for_vpath_children=scope,
                             display_style="moved_here" if meta.get("vpath") else "normal",
                             vpath=meta.get("vpath"),
                             virtual=True,
@@ -311,19 +306,18 @@ def create_app(
                         if canon_p.exists():
                             is_dir = canon_p.is_dir()
                             size = 0 if is_dir else canon_p.stat().st_size
-                            empty = compute_empty(canon_p, is_dir, size, _meta, vpath_val)
                         else:
                             is_dir = True
                             size = 0
-                            empty = True
                         entry = build_listing_entry_from_meta(
                             _meta,
                             canon_path,
                             Path(vpath_val).name,
                             is_dir,
                             size,
-                            empty,
                             hide_tags,
+                            path_obj=canon_p if canon_p.exists() else None,
+                            scope_for_vpath_children=vpath_val,
                             display_style="moved_here",
                             vpath=vpath_val,
                             scope_for_rules=vpath_val,
@@ -410,20 +404,21 @@ def create_app(
                     if p.exists():
                         is_dir = p.is_dir()
                         size = 0 if is_dir else p.stat().st_size
-                        empty = size == 0 if not is_dir else False
                     else:
                         # Include paths from tags table even if they no longer exist on disk
                         is_dir = False
                         size = 0
-                        empty = True
+                    meta = _meta.get_path_meta(path_str)
+                    scope_vpath = (meta.get("vpath") if meta else None) or path_str
                     entry = build_listing_entry_from_meta(
                         _meta,
                         path_str,
                         p.name if p.exists() else Path(path_str).name or path_str,
                         is_dir,
                         size,
-                        empty,
                         hide_tags_filter,
+                        path_obj=p if p.exists() else None,
+                        scope_for_vpath_children=scope_vpath,
                         scope_for_rules=path_str,
                     )
                     if entry is None:
@@ -489,15 +484,17 @@ def create_app(
                                 continue
                             is_dir = p.is_dir()
                             size = 0 if is_dir else p.stat().st_size
-                            empty = size == 0 if not is_dir else False
+                            meta_for_scope = _meta.get_path_meta(entry_path)
+                            scope_vpath = (meta_for_scope.get("vpath") if meta_for_scope else None) or entry_path
                             entry = build_listing_entry_from_meta(
                                 _meta,
                                 entry_path,
                                 p.name,
                                 is_dir,
                                 size,
-                                empty,
                                 hide_tags_filter,
+                                path_obj=p,
+                                scope_for_vpath_children=scope_vpath,
                                 scope_for_rules=entry_path,
                             )
                             if entry is None:
@@ -546,14 +543,17 @@ def create_app(
                     p = Path(d)
                     if not p.exists() or not p.is_dir():
                         continue
+                    meta_for_scope = _meta.get_path_meta(d)
+                    scope_vpath = (meta_for_scope.get("vpath") if meta_for_scope else None) or d
                     entry = build_listing_entry_from_meta(
                         _meta,
                         d,
                         p.name,
                         True,
                         0,
-                        False,
                         hide_tags_filter,
+                        path_obj=p,
+                        scope_for_vpath_children=scope_vpath,
                         scope_for_rules=d,
                         has_direct_match=(d in dirs_direct),
                     )

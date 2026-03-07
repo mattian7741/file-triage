@@ -33,7 +33,7 @@ This plan aligns the file-triage codebase with **AA_ADDENDUM_06_DEVELOPMENT_STAN
 - Replace broad `except Exception` at route level with **specific exception handling** and **translation** into the error envelope; log full diagnostics at the route only, never leak stack traces in responses.
 
 **Deliverables:**
-- `docs/explorer_api_contract.md` (or similar) with error envelope and list of endpoints + response shapes.
+- `explorer_api_contract.md` (or similar) with error envelope and list of endpoints + response shapes.
 - Helper (e.g. `_error_response(code, message, retryable=False)`) used by all Explorer routes.
 - All `jsonify({"error": ...})` and exception paths go through the envelope.
 

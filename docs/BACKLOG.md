@@ -4,9 +4,9 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Ordering principle:** High impact from a design/maintenance perspective, **low blast radius** first. Ease into meaningful change; avoid high-risk destabilizing changes at the top.
 
-**Deployment before development:** Deployment strategy and end-to-end CI/CD are prerequisites for development (CODING_STANDARDS § Deployment and CI/CD). No development iteration (beyond the current one) may start until the deployment pipeline is in place and a hello-world MVP has been run through it. **If you are midstream on an iteration,** complete that iteration first; then satisfy the deployment prerequisite before advancing to the next development iteration. See § Deployment iteration below.
+**Deployment before development:** Deployment strategy and end-to-end CI/CD are prerequisites for development (../core-documentation/CODING_STANDARDS § Deployment and CI/CD). No development iteration (beyond the current one) may start until the deployment pipeline is in place and a hello-world MVP has been run through it. **If you are midstream on an iteration,** complete that iteration first; then satisfy the deployment prerequisite before advancing to the next development iteration. See § Deployment iteration below.
 
-**Relationship to CODING_STANDARDS.md:** BACKLOG defines **what** (outcomes, deliverables, iteration scope). CODING_STANDARDS.md defines **how** (implementation approach). The two are orthogonal: apply coding standards when implementing backlog items; do not embed coding strategy inside backlog tasks.
+**Relationship to ../core-documentation/CODING_STANDARDS.md:** BACKLOG defines **what** (outcomes, deliverables, iteration scope). ../core-documentation/CODING_STANDARDS.md defines **how** (implementation approach). The two are orthogonal: apply coding standards when implementing backlog items; do not embed coding strategy inside backlog tasks.
 
 ---
 
@@ -41,7 +41,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ## Deployment iteration — Pipeline and hello-world MVP (prerequisite gate)
 
-**Goal:** Satisfy the deployment/CI/CD prerequisite before advancing with further development work. This project uses the **canonical** approach for desktop apps (Electron + Homebrew Cask); see CODING_STANDARDS § Canonical deployment strategy and DETAILED_DESIGN § Deployment.
+**Goal:** Satisfy the deployment/CI/CD prerequisite before advancing with further development work. This project uses the **canonical** approach for desktop apps (Electron + Homebrew Cask); see ../core-documentation/CODING_STANDARDS § Canonical deployment strategy and DETAILED_DESIGN § Deployment.
 
 - [x] **Deployment approach:** Canonical (Electron + brew cask) chosen and documented in DETAILED_DESIGN § Deployment.
 - [x] **Electron shell:** App runs inside Electron (wrap existing backend + frontend). Minimal window, load the Explorer UI; backend (Flask or equivalent) runs locally inside the app or is served by the same process.
@@ -49,10 +49,10 @@ Gap analysis between **current implementation** and **specification documents** 
 - [x] **Publish:** Artifact hosted at a stable, versioned URL (e.g. GitHub Releases). Pipeline creates the release and uploads the artifact.
 - [x] **Cask:** A Homebrew Cask exists that points at the release URL (either in a dedicated tap repo or prepared for submission to homebrew-cask). Cask includes `version`, `sha256`, `url`, `name`, `desc`, `homepage`, `app`.
 - [x] **CI/CD pipeline:** End-to-end workflow runs on push/tag (e.g. GitHub Actions): build Electron app → run tests → create release + upload artifact → (if using a tap) update cask and push. Pipeline is documented (e.g. in README or `.github/workflows`).
-- [x] **Hello-world MVP:** Full run through the pipeline; install the app via `brew install --cask <cask>` (or run the built `.app`/`.dmg`) and verify it launches. Prerequisite satisfied; development unblocked for Iteration 2+.
+- [x] **Hello-world MVP:** Full run through the pipeline; install the app via `brew install --cask <cask>` (or run the built `.app`/`.dmg`) and **verify it launches** (see DETAILED_DESIGN § Deployment → How to verify the hello-world MVP). Prerequisite satisfied; development unblocked for Iteration 2+.
 - [x] No further development iterations (e.g. Iteration 2+) are started until this gate is satisfied. If midstream on an iteration (e.g. Iteration 1), complete it first, then complete this deployment iteration.
 
-**Deliverables:** Electron app builds and runs; artifact published at stable URL; cask available; CI/CD pipeline in place and exercised; hello-world MVP verified. Development unblocked for next backlog iteration.
+**Deliverables:** Electron app builds and runs; artifact published at stable URL; cask available; CI/CD pipeline in place and exercised; **hello-world MVP verified** (run the steps in DETAILED_DESIGN § Deployment → How to verify the hello-world MVP at least once). Development unblocked for next backlog iteration.
 
 ---
 
@@ -60,11 +60,11 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** One code path for building a listing entry (tags, soft, negation, effective, empty, hide filter). Removes duplication and overload.
 
-- [ ] A single entry-build path exists: given path, tag/vpath data (or accessor), and hide_tags, returns full listing entry or exclude. All listing, tagged, and tag-search responses use it.
-- [ ] A single tag-resolution path exists: given path and accessor, returns (hard, soft, negation). Soft uses current parent-chain semantics (inheritance unchanged in this iteration).
-- [ ] All duplicated tag-resolution and entry-building blocks in listing, tagged, and tag-search routes are removed; routes call the single path.
-- [ ] A single empty-computation path exists and is the only place empty is set for entries; duplicate compute_empty call sites removed.
-- [ ] Single entry-build path is covered by tests.
+- [x] A single entry-build path exists: given path, tag/vpath data (or accessor), and hide_tags, returns full listing entry or exclude. All listing, tagged, and tag-search responses use it.
+- [x] A single tag-resolution path exists: given path and accessor, returns (hard, soft, negation). Soft uses current parent-chain semantics (inheritance unchanged in this iteration).
+- [x] All duplicated tag-resolution and entry-building blocks in listing, tagged, and tag-search routes are removed; routes call the single path.
+- [x] A single empty-computation path exists and is the only place empty is set for entries; duplicate compute_empty call sites removed.
+- [x] Single entry-build path is covered by tests.
 
 **Deliverables:** No duplicate tag-resolution or entry-shape logic; routes are thin (parse → single build path → response).
 
@@ -198,9 +198,10 @@ Iteration 10 (module organization)                ← optional, after 2
 
 ## Reference
 
+- **Executive summary:** EXECUTIVE_SUMMARY.md
 - **Specs:** PSEUDO_LOGIC.md, FUNCTIONAL_SPECIFICATION.md, FUNCTIONAL_CHEATSHEET.md, EXPLORER_RULES.md
-- **Coding standards:** CODING_STANDARDS.md (how to implement; orthogonal to this backlog)
+- **Coding standards:** ../core-documentation/CODING_STANDARDS.md (how to implement; orthogonal to this backlog)
 - **Existing plan:** REFACTOR_ITERATION_PLAN.md (development standards; BACKLOG focuses on spec alignment and consolidation)
-- **API:** docs/explorer_api_contract.md
+- **API:** explorer_api_contract.md
 
 *Update checkboxes as work completes (- [ ] → - [x]).*

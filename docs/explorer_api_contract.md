@@ -143,7 +143,7 @@ Exact keys may vary by endpoint; this is the conceptual contract for “one file
 
 ## 4. Typed shapes (reference)
 
-The implementation uses `file_triage.explorer.types` for TypedDict shapes: `ErrorEnvelope`, `ListingEntry`, `ListingResponse`. These align with the JSON contract above. Payload design follows the global-superset principle (CODING_STANDARDS): all payloads are subsets of a consistent superset so consumers can share schemas and APIs can commute to a messaging layer; application of that principle across the full API is ongoing.
+The implementation uses `file_triage.explorer.types` for TypedDict shapes: `ErrorEnvelope`, `ListingEntry`, `ListingResponse`. These align with the JSON contract above. Payload design follows the global-superset principle (../core-documentation/CODING_STANDARDS): all payloads are subsets of a consistent superset so consumers can share schemas and APIs can commute to a messaging layer; application of that principle across the full API is ongoing.
 
 ---
 

@@ -4,9 +4,9 @@ Desktop file triage — analyse and organise chaotic file collections across dis
 
 ## Docs
 
-- **DEVELOPMENT_GUIDE.md** — Entry point: document map, prerequisites (git + deployment), how to run iterations.
-- **BACKLOG.md** — Spec-alignment iterations; Deployment iteration (Electron + Homebrew Cask) is the gate before Iteration 2+.
-- **explorer_api_contract.md** — API and terminology (effective path, negation, pane, etc.).
+- **Documentation** — Project docs live in `docs/`. Start with **docs/EXECUTIVE_SUMMARY.md** for a one-page overview; then **../core-documentation/DEVELOPMENT_GUIDE.md** for the full document map and how to run iterations.
+- **docs/BACKLOG.md** — Spec-alignment iterations; Deployment iteration (Electron + Homebrew Cask) is the gate before Iteration 2+.
+- **docs/explorer_api_contract.md** — API and terminology (effective path, negation, pane, etc.).
 
 ## Run Explorer (CLI)
 
@@ -44,6 +44,7 @@ Produces `dist/File Triage-0.1.0.dmg` and `.zip`. The app bundles the Python sou
 
 ## Deployment (CI/CD and Cask)
 
-- **Canonical strategy:** Build → publish to stable URL (e.g. GitHub Releases) → distribute via Homebrew Cask. See CODING_STANDARDS § Canonical deployment strategy and BACKLOG § Deployment iteration.
+- **Canonical strategy:** Build → publish to stable URL (e.g. GitHub Releases) → distribute via Homebrew Cask. See ../core-documentation/CODING_STANDARDS § Canonical deployment strategy and docs/BACKLOG § Deployment iteration.
 - **Pipeline:** `.github/workflows/build-release.yml` builds the macOS app on release; attach the DMG/zip to the release for the Cask URL.
-- **Cask:** A Cask file is in `Casks/file-triage.rb`. To use it: create a tap repo (e.g. `homebrew-tap`) with a `Casks/` dir, copy the Cask there, set the real `sha256` after the first build (see comment in the file), then `brew tap yourname/tap` and `brew install --cask file-triage`. Or submit the Cask to [homebrew-cask](https://github.com/Homebrew/homebrew-cask).
+- **Cask:** Tap repo at `mattian7741/homebrew-tap`. Install with `brew tap mattian7741/tap` then `brew install --cask file-triage`. Update the Cask (version, sha256) in the tap repo when releasing. See docs/DETAILED_DESIGN § Deployment.
+- **Verify the built app (prerequisite):** Before starting Iteration 2+, run through the hello-world MVP verification once: download the DMG from a release, install, launch, and confirm the Electron window loads the Explorer UI and the backend listens on port 5001. Full steps: docs/DETAILED_DESIGN.md § Deployment → How to verify the hello-world MVP.

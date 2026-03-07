@@ -157,11 +157,11 @@
       // When viewing "tagged" list for a specific tag, show entries that have that tag in effective set
       if (viewContext && viewContext.type === "tagged" && viewContext.tag) {
         if (eff.indexOf(viewContext.tag) >= 0) return true;
-        if (!showNullTags && (e.tags_null || []).indexOf(viewContext.tag) >= 0) return false;
+        if (!showNullTags && (e.tags_negation || []).indexOf(viewContext.tag) >= 0) return false;
       }
       if (viewContext && viewContext.type === "tag-search" && viewContext.tag) {
         if (eff.indexOf(viewContext.tag) >= 0) return true;
-        if (!showNullTags && (e.tags_null || []).indexOf(viewContext.tag) >= 0) return false;
+        if (!showNullTags && (e.tags_negation || []).indexOf(viewContext.tag) >= 0) return false;
       }
       if (e.vpath) {
         if (e.display_style === "original" && !showTrashed) return false;
@@ -188,7 +188,7 @@
   function getEffectiveTagsFromEntry(e) {
     var explicit = e.tags || [];
     var inherited = e.tags_inherited || [];
-    var nulls = e.tags_null || [];
+    var nulls = e.tags_negation || [];
     return explicit.concat(inherited.filter(function (t) { return explicit.indexOf(t) < 0 && nulls.indexOf(t) < 0; }));
   }
 
@@ -1404,7 +1404,7 @@
     const icon = e.is_dir ? "📁" : "📄";
     const explicitTags = e.tags || [];
     const inheritedTags = e.tags_inherited || [];
-    const nullTags = e.tags_null || [];
+    const nullTags = e.tags_negation || [];
     const effective = explicitTags.concat(inheritedTags.filter(function (t) { return explicitTags.indexOf(t) < 0 && nullTags.indexOf(t) < 0; }));
     const inVtrash = e.vpath && String(e.vpath).indexOf("__VTRASH/") === 0;
     const checked = selectedPaths.has(e.path) ? ' checked="checked"' : "";

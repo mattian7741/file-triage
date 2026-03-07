@@ -136,7 +136,7 @@ def create_app(
                             if entry is None:
                                 continue
                             if report_all_tags:
-                                all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                                all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                             entries.append(entry)
                         else:
                             canon_p = Path(canon_path)
@@ -162,7 +162,7 @@ def create_app(
                             if entry is None:
                                 continue
                             if report_all_tags:
-                                all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                                all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                             entries.append(entry)
                     except Exception:
                         continue
@@ -205,7 +205,7 @@ def create_app(
                                 if entry is None:
                                     continue
                                 if report_all_tags:
-                                    all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                                    all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                                 entries.append(entry)
                             except OSError:
                                 continue
@@ -252,7 +252,7 @@ def create_app(
                     if entry is None:
                         continue
                     if report_all_tags and _meta:
-                        all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                        all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                     entries.append(entry)
                 except OSError:
                     continue
@@ -289,7 +289,7 @@ def create_app(
                         if entry is None:
                             continue
                         if report_all_tags:
-                            all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                            all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                         entries.append(entry)
                     except Exception:
                         continue
@@ -325,7 +325,7 @@ def create_app(
                         if entry is None:
                             continue
                         if report_all_tags:
-                            all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                            all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                         entries.append(entry)
                     except Exception:
                         continue
@@ -424,7 +424,7 @@ def create_app(
                     if entry is None:
                         continue
                     if report_all_tags:
-                        all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                        all_tags |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                     entries.append(entry)
                 except OSError:
                     continue
@@ -499,10 +499,10 @@ def create_app(
                             )
                             if entry is None:
                                 continue
-                            eff = effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                            eff = effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                             if report_all_tags:
                                 all_tags_set |= eff
-                            if tag not in eff and not (show_null_tagged and tag in entry["tags_null"]):
+                            if tag not in eff and not (show_null_tagged and tag in entry["tags_negation"]):
                                 if p.is_dir():
                                     yield from walk(p, all_tags_set, emit_progress)
                                 continue
@@ -560,7 +560,7 @@ def create_app(
                     if entry is None:
                         continue
                     if report_all_tags:
-                        all_tags_from_dirs |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_null"])
+                        all_tags_from_dirs |= effective_tags(entry["tags"], entry["tags_inherited"], entry["tags_negation"])
                     dir_entries.append(entry)
                 out = {"tag": tag, "path": raw_scope, "entries": dir_entries, "mode": "contains"}
                 if report_all_tags:
@@ -663,7 +663,7 @@ def create_app(
             return jsonify({
                 "path": raw,
                 "tags": _meta.get_tags(raw),
-                "tags_null": _meta.get_tag_nulls(raw),
+                "tags_negation": _meta.get_tag_nulls(raw),
             })
 
         @app.route("/api/tag-nulls", methods=["DELETE"])
@@ -679,7 +679,7 @@ def create_app(
             return jsonify({
                 "path": raw,
                 "tags": _meta.get_tags(raw),
-                "tags_null": _meta.get_tag_nulls(raw),
+                "tags_negation": _meta.get_tag_nulls(raw),
             })
 
         @app.route("/api/hidden-tags")

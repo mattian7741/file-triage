@@ -31,7 +31,7 @@ class ListingEntry(TypedDict, total=False):
     empty: bool
     tags: list[str]
     tags_inherited: list[str]
-    tags_null: list[str]
+    tags_negation: list[str]
     vpath: str
     display_style: str
     virtual: bool

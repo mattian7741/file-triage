@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def effective_tags(explicit: list[str], inherited: list[str], nulls: list[str]) -> set[str]:
-    """Compute effective tag set: (explicit ∪ inherited) ∖ nulls. Pure."""
-    return (set(explicit) | set(inherited)) - set(nulls)
+def effective_tags(explicit: list[str], inherited: list[str], negation: list[str]) -> set[str]:
+    """Compute effective tag set: (explicit ∪ inherited) ∖ negation. Pure."""
+    return (set(explicit) | set(inherited)) - set(negation)
 
 
 def entry_empty(
@@ -54,7 +54,7 @@ def build_listing_entry(
     empty: bool = False,
     tags: list[str],
     tags_inherited: list[str],
-    tags_null: list[str],
+    tags_negation: list[str],
     hide_tags: set[str],
     display_style: str = "normal",
     vpath: str | None = None,
@@ -68,7 +68,7 @@ def build_listing_entry(
     effective & hide_tags is non-empty, returns None. Otherwise returns
     the full entry dict for API response.
     """
-    eff = effective_tags(tags, tags_inherited, tags_null)
+    eff = effective_tags(tags, tags_inherited, tags_negation)
     if should_exclude_by_hide_tags(eff, hide_tags):
         return None
     entry: dict[str, Any] = {
@@ -79,7 +79,7 @@ def build_listing_entry(
         "empty": empty,
         "tags": tags,
         "tags_inherited": tags_inherited,
-        "tags_null": tags_null,
+        "tags_negation": tags_negation,
         "display_style": display_style,
     }
     if vpath is not None:

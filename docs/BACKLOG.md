@@ -17,13 +17,13 @@ Gap analysis between **current implementation** and **specification documents** 
 | Area | Spec | Current implementation | Gap |
 |------|------|------------------------|-----|
 | **Path / vpath** | effective_path = vpath ?? path; set_vpath normalizes and persists; move/rename/delete/restore = set_vpath only | set_vpath in meta/db.py with normalize; move/rename/trash/restore call it | Aligned. Naming in code comments could say "set_vpath" / "set location". |
-| **Tags** | (Hard ∪ Soft) ∖ Negation; soft from **parent only** + rules; four states: soft, hard, negation, absent | effective_tags(explicit, inherited, nulls); get_parent_effective_tags = parent only; API/DB use "null" | Aligned (parent-only). Naming: "null" vs "negation" (Iteration 6). |
+| **Tags** | (Hard ∪ Soft) ∖ Negation; soft from **parent only** + rules; four states: soft, hard, negation, absent | effective_tags; get_parent_effective_tags; tags_negation in API; tag_nulls stores negation | Aligned. |
 | **Entry building** | Single logical path for entry + tags + empty | Duplicated "get_tags, get_tag_nulls, get_tags_from_rules, get_ancestor_tags → build" in listing, tagged, tag-search | Consolidate to one path (see REFACTOR_ITERATION_PLAN Iteration 4). |
 | **Empty** | folder_empty and file_empty depend on show_trashed; child-by-path only when vpath null or show_trashed | compute_empty is model-level (no show_trashed); frontend uses entry.empty | Align: document model vs view empty; frontend "empty" = no visible children after filter; file empty = size==0 or (vpath && !showTrashed). |
 | **Visibility** | Render-time only; backend returns full data | Backend passes hide_tags=set(); show_null_tagged=True always | Aligned. |
 | **TS / SRS** | Tag matches/containers in TS; contains mode → move_in no-op. SRS = other search types (e.g. regex_path). | Tag search is separate route; drop on tag scope always adds tag; no regex search | Contains-mode no-op missing. SRS regex_path not implemented. |
 | **Controls** | Scope-local toggles (e.g. show_negation) in pane; global (show_trashed, hidden_tag_set) in shared UI | show_trashed and show_null in header | Optional: move show_negation into pane for TS/SRS (later). |
-| **Terminology** | pane, scope, negation, effective path, set_vpath | view, left/right pane, null, tags_null | Align naming in docs and API surface. |
+| **Terminology** | pane, scope, negation, effective path, set_vpath | view, left/right pane, tags_negation | Aligned (Iteration 6). |
 
 ---
 
@@ -114,9 +114,9 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** Public API and domain types use "negation" where the spec says negation; DB table name can remain for migration simplicity.
 
-- [ ] Domain/API entry shape exposes negation under a spec-aligned name (e.g. tags_negation); backward-compat alias or full rename chosen and applied consistently.
-- [ ] API contract and route docstrings use "negation tag" (not "null tag") for the concept.
-- [ ] Internal storage (e.g. tag_nulls table and its accessors) either unchanged and documented as "stores negation tags," or renamed in a separate migration.
+- [x] Domain/API entry shape exposes negation under a spec-aligned name (e.g. tags_negation); backward-compat alias or full rename chosen and applied consistently.
+- [x] API contract and route docstrings use "negation tag" (not "null tag") for the concept.
+- [x] Internal storage (e.g. tag_nulls table and its accessors) either unchanged and documented as "stores negation tags," or renamed in a separate migration.
 
 **Deliverables:** Public surface (API, types, docs) uses "negation"; storage naming documented or migrated.
 

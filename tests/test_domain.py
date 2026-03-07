@@ -62,7 +62,7 @@ class TestBuildListingEntry:
             empty=True,
             tags=["a"],
             tags_inherited=[],
-            tags_null=[],
+            tags_negation=[],
             hide_tags={"a"},
         )
         assert result is None
@@ -76,7 +76,7 @@ class TestBuildListingEntry:
             empty=True,
             tags=["a"],
             tags_inherited=[],
-            tags_null=[],
+            tags_negation=[],
             hide_tags={"b"},
         )
         assert result is not None
@@ -94,7 +94,7 @@ class TestBuildListingEntry:
             empty=True,
             tags=[],
             tags_inherited=[],
-            tags_null=[],
+            tags_negation=[],
             hide_tags=set(),
             vpath="/v/p",
         )
@@ -109,7 +109,7 @@ class TestBuildListingEntry:
             empty=True,
             tags=[],
             tags_inherited=[],
-            tags_null=[],
+            tags_negation=[],
             hide_tags=set(),
             has_direct_match=True,
         )

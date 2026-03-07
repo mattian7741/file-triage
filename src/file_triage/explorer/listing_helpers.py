@@ -171,7 +171,7 @@ def build_listing_entry_from_meta(
         meta_accessor=meta_accessor,
         scope_for_vpath_children=scope_for_vpath_children,
     )
-    tags, tags_inherited, tags_null = resolve_tags(
+    tags, tags_inherited, tags_negation = resolve_tags(
         meta_accessor=meta_accessor,
         path_str=path_str,
         scope_for_rules=scope_for_rules or path_str,
@@ -184,7 +184,7 @@ def build_listing_entry_from_meta(
         empty=empty,
         tags=tags,
         tags_inherited=tags_inherited,
-        tags_null=tags_null,
+        tags_negation=tags_negation,
         hide_tags=hide_tags,
         display_style=display_style,
         vpath=vpath,

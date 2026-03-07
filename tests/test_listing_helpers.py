@@ -115,7 +115,7 @@ class TestBuildListingEntryFromMeta:
         assert entry["path"] == "/p/x"
         assert entry["tags"] == []
         assert entry["tags_inherited"] == []
-        assert entry["tags_null"] == []
+        assert entry["tags_negation"] == []
         assert entry["empty"] is True
 
     def test_excluded_by_hide_tags_returns_none(self):

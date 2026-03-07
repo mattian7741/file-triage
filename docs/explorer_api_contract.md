@@ -12,7 +12,7 @@ Canonical terms from the specification (PSEUDO_LOGIC.md, FUNCTIONAL_SPECIFICATIO
 |------|--------|
 | **effective path** | `vpath ?? path`: the path used for display and resolution; equals virtual path when set, otherwise filesystem path. |
 | **vpath / location** | **State** of where the entity “lives.” Move, rename, trash, and restore are all the same state update: set this entity’s vpath to the desired value. The API exposes this as **PUT `/api/vpath`** (or **PUT `/api/location`**); request body carries the desired state `{ path, vpath }`; response returns the actual state. No separate /move, /delete, /rename—one state, one endpoint. |
-| **negation** | Tag state meaning “explicitly excluded from this path.” Spec: negation tags are not inherited; child has *absent* for that tag. API exposes this set as `tags_null` (see mapping below). |
+| **negation** | Tag state meaning “explicitly excluded from this path.” Spec: negation tags are not inherited; child has *absent* for that tag. API exposes this set as `tags_negation` (see mapping below). |
 | **scope** | Context of the content shown: **FS** (filesystem listing), **TS** (tag scope: tag search/matches/containers), **SRS** (search-result scope: other search types). |
 | **pane** | UI container that shows one scope (e.g. left pane = FS, right pane = TS). Use “pane” for this; reserve **view** for a data-view or presentation of a dataset. |
 
@@ -22,7 +22,7 @@ Canonical terms from the specification (PSEUDO_LOGIC.md, FUNCTIONAL_SPECIFICATIO
 |---------|----------------|-------|
 | `tags` | hard tags | Explicit tags on the path. |
 | `tags_inherited` | soft tags | From parent + rules; spec uses parent-only (see BACKLOG Iteration 5). |
-| `tags_null` | **negation** | Set of tags in negation state for this path. Contract and docs use “negation”; key remains `tags_null` for compatibility until a later iteration. |
+| `tags_negation` | **negation** | Set of tags in negation state for this path. Contract and docs use “negation”; key remains `tags_negation` for compatibility until a later iteration. |
 | `vpath` | virtual path / location state | When set, effective path = vpath. PUT `/api/vpath` sets this state (move/rename/trash/restore are all this update). |
 
 ---
@@ -106,8 +106,8 @@ Base path: `/api` unless noted. All JSON request bodies are `application/json`; 
 | GET | `/api/tag-names` | — | `{ "tags": […] }` |
 | GET | `/api/tagged` | `tag`, `hide_tags?`, `report_all_tags?`, `show_null_tagged?` | `{ "tag", "entries": […], "all_tags_in_scope"? }` — `show_null_tagged` controls inclusion of entries with **negation** for the tag. |
 | GET | `/api/tag-search` | `tag`, `path`, `mode=matches\|contains`, `stream?`, … | JSON array (contains) or NDJSON stream (matches + stream=1). |
-| POST | `/api/tag-nulls` | JSON `path`, `tag` | `{ "path", "tags", "tags_null": […] }` — **negation** set; add negation for tag. |
-| DELETE | `/api/tag-nulls` | `path`, `tag` | `{ "path", "tags", "tags_null": […] }` — **negation** set; remove negation for tag. |
+| POST | `/api/tag-nulls` | JSON `path`, `tag` | `{ "path", "tags", "tags_negation": […] }` — **negation** set; add negation for tag. |
+| DELETE | `/api/tag-nulls` | `path`, `tag` | `{ "path", "tags", "tags_negation": […] }` — **negation** set; remove negation for tag. |
 | GET | `/api/rules` | — | `{ "rules": […] }` |
 | POST | `/api/rules` | JSON `pattern`, `tag` | `{ "rules": […] }` |
 | DELETE | `/api/rules` | JSON `pattern`, `tag` | `{ "rules": […] }` |
@@ -133,7 +133,7 @@ Base path: `/api` unless noted. All JSON request bodies are `application/json`; 
 Each item in `entries` (listing, tagged, tag-search) has the same logical shape:
 
 - `path`, `name`, `is_dir`, `size` (optional), `empty` (optional)
-- `tags`, `tags_inherited`, `tags_null` (when meta is used) — **tags_null** = negation set (see §0).
+- `tags`, `tags_inherited`, `tags_negation` (when meta is used) — **tags_negation** = negation set (see §0).
 - `vpath`, `display_style` (when moved/virtual; effective path = vpath ?? path)
 - `has_direct_match` (contains mode only, optional)
 

@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS name_rule_tags (
 CREATE INDEX IF NOT EXISTS name_rule_tags_pattern ON name_rule_tags(pattern);
 CREATE INDEX IF NOT EXISTS name_rule_tags_tag ON name_rule_tags(tag);
 
+-- tag_nulls: stores negation tags (spec: "negation" = explicitly excluded from path).
 CREATE TABLE IF NOT EXISTS tag_nulls (
     path TEXT NOT NULL,
     tag TEXT NOT NULL,
@@ -222,7 +223,7 @@ def get_paths_by_tag(db_path: Path, tag: str) -> list[str]:
 
 
 def get_tag_nulls(db_path: Path, path: str | Path) -> list[str]:
-    """Return list of tags that are nullified (not tagged with) for this path."""
+    """Return list of negation tags for this path (tag_nulls table stores negation tags)."""
     path_str = str(Path(path).resolve())
     conn = _conn(db_path)
     try:
@@ -279,7 +280,7 @@ def remove_hidden_tag(db_path: Path, tag: str) -> None:
 
 
 def add_tag_null(db_path: Path, path: str | Path, tag: str) -> None:
-    """Set a null tag (not tagged with) for this path. Removes the tag from tags if present."""
+    """Add negation tag for this path (tag_nulls table). Removes the tag from tags if present."""
     path_str = str(Path(path).resolve())
     tag = tag.strip()
     if not tag:
@@ -297,7 +298,7 @@ def add_tag_null(db_path: Path, path: str | Path, tag: str) -> None:
 
 
 def remove_tag_null(db_path: Path, path: str | Path, tag: str) -> None:
-    """Remove a null tag and add it as a hard tag (flip null → hard)."""
+    """Remove negation tag and add as hard tag (flip negation → hard)."""
     path_str = str(Path(path).resolve())
     tag = tag.strip()
     if not tag:

@@ -761,6 +761,18 @@ def create_app(
                 return error_response("CONFLICT", "Conflict (e.g. destination exists)", 409)
             return jsonify({"path": path_raw, "vpath": vpath_str}), 200
 
+        @app.route("/api/generate-commands")
+        def api_generate_commands():
+            """Generate filesystem commands to materialize pending vpath changes. No execution.
+            job_id: optional; if omitted or 'all', returns all pending; else only that job."""
+            if not _meta_db or not _meta_db.exists():
+                return error_response("NO_META_DB", "No meta DB configured", 503)
+            job_id = request.args.get("job_id") or None
+            if job_id == "":
+                job_id = None
+            commands = _meta.generate_commands(job_id)
+            return jsonify({"commands": commands})
+
         @app.route("/api/changes")
         def api_changes():
             """Return meta rows (path, vpath) where path or vpath is under scope_left or scope_right.

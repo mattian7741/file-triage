@@ -128,10 +128,10 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Initial scope:** Generate the instruction list only. No execution. User can review commands before a future iteration adds execution.
 
-- [ ] **job_id:** Add `job_id` column to meta table (nullable; discriminator for grouping changes). New vpath writes can be associated with a job. Jobs can be applied one at a time.
-- [ ] **Generate commands:** API or module that, given a job_id (or "all pending"), produces an ordered list of filesystem instructions (e.g. `mv`, `cp`, `rsync`—choose the most stable/transactional option). Instructions are idempotent where possible; partial completion should leave a recoverable state.
-- [ ] **Contract:** Document the generated-command format (e.g. `{ op, src, dst, job_id }`). No execution in this iteration.
-- [ ] **Future options (out of scope):** Execute staged changes; generate + review + accept each command; undo/rollback. Document as follow-on iterations.
+- [x] **job_id:** Add `job_id` column to meta table (nullable; discriminator for grouping changes). New vpath writes can be associated with a job. Jobs can be applied one at a time.
+- [x] **Generate commands:** API or module that, given a job_id (or "all pending"), produces an ordered list of filesystem instructions (e.g. `mv`, `cp`, `rsync`—choose the most stable/transactional option). Instructions are idempotent where possible; partial completion should leave a recoverable state.
+- [x] **Contract:** Document the generated-command format (e.g. `{ op, src, dst, job_id }`). No execution in this iteration.
+- [x] **Future options (out of scope):** Execute staged changes; generate + review + accept each command; undo/rollback. Document as follow-on iterations.
 
 **Design note (rollback):** We may implement an entire subtree in the filesystem as a backup structure to support rollback. Design this before implementation if we use it.
 

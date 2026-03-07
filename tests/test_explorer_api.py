@@ -86,6 +86,21 @@ class TestSuccessShapes:
         assert "X-Request-ID" in r.headers
         assert len(r.headers["X-Request-ID"]) > 0
 
+    def test_generate_commands_shape(self, client):
+        """GET /api/generate-commands returns { commands: [{ op, src, dst, job_id }, ...] }."""
+        r = client.get("/api/generate-commands")
+        if r.status_code == 503:
+            pytest.skip("No meta DB configured")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert "commands" in data
+        assert isinstance(data["commands"], list)
+        for cmd in data["commands"]:
+            assert "op" in cmd
+            assert "src" in cmd
+            assert "dst" in cmd
+            assert "job_id" in cmd
+
 
 class TestIdempotency:
     """Add-tag and similar writes are idempotent where applicable."""

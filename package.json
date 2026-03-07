@@ -1,6 +1,6 @@
 {
   "name": "file-triage",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Desktop file triage — analyse and organise chaotic file collections (Electron + Explorer UI)",
   "main": "electron/main.js",
   "author": "",

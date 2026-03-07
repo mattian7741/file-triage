@@ -118,8 +118,13 @@ Base path: `/api` unless noted. All JSON request bodies are `application/json`; 
 | POST | `/api/new-folder` | JSON `path`, `name` | `{ "path" }` |
 | PUT | `/api/vpath` | JSON `path`, `vpath` | `{ "path", "vpath" }` — set **location state** for the entity identified by `path`; `vpath` is the desired state (normalized and persisted). Move, rename, trash, restore are all this single state update. Alias: PUT `/api/location` with same semantics if preferred. |
 | GET | `/api/changes` | `scope_left?`, `scope_right?` | `{ "changes": […] }` |
+| GET | `/api/generate-commands` | `job_id?` | `{ "commands": [{ "op", "src", "dst", "job_id" }, …] }` — generate filesystem commands to materialize pending vpath changes; no execution. `job_id` omitted or `all` = all pending; else only that job. |
 
-### 2.4 Debug
+### 2.4 Generated command shape (reference)
+
+Each item in `commands` has: `op` (e.g. `"mv"`), `src` (source path), `dst` (destination path), `job_id` (nullable). Commands are ordered (deeper paths first). No execution in this iteration; future: execute, review, rollback.
+
+### 2.5 Debug
 
 | Method | Path | Success response |
 |--------|------|-------------------|

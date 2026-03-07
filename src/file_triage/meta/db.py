@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS meta (
     inode INTEGER,
     device INTEGER,
     updated_at TEXT NOT NULL,
-    vpath TEXT
+    vpath TEXT,
+    job_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -106,6 +107,10 @@ def init_db(db_path: Path) -> None:
             conn.execute(
                 "CREATE UNIQUE INDEX meta_vpath_unique ON meta(vpath) WHERE vpath IS NOT NULL"
             )
+            conn.commit()
+        # Migration: add job_id column if missing (existing DBs)
+        if "job_id" not in columns:
+            conn.execute("ALTER TABLE meta ADD COLUMN job_id TEXT")
             conn.commit()
     finally:
         conn.close()
@@ -382,12 +387,18 @@ def get_virtual_children(db_path: Path, parent_path: str | Path) -> list[str]:
     return result
 
 
-def set_vpath(db_path: Path, path: str | Path, vpath: str | Path | None) -> None:
+def set_vpath(
+    db_path: Path,
+    path: str | Path,
+    vpath: str | Path | None,
+    job_id: str | None = None,
+) -> None:
     """Set location state (vpath) for the path. Move, rename, trash, restore all use this single primitive.
     No filesystem change. If the path has no meta row, one is created. vpath=None clears the location state.
     If vpath equals path (after normalization), vpath is nullified to avoid duplicate listings.
     Raises ValueError if another row already has this vpath (duplicate folder name).
-    Stores vpath with _scope_key (no resolve) so listing by vpath works when path doesn't exist on disk."""
+    Stores vpath with _scope_key (no resolve) so listing by vpath works when path doesn't exist on disk.
+    job_id: optional discriminator for grouping changes; used by generate_commands."""
     path_str = _path_key(path)
     vpath_str = str(_scope_key(vpath)) if vpath else None
     if vpath_str and vpath_str == path_str:
@@ -410,17 +421,60 @@ def set_vpath(db_path: Path, path: str | Path, vpath: str | Path | None) -> None
             inode = _to_sqlite_int(inode) if inode is not None else None
             device = _to_sqlite_int(device) if device is not None else None
             conn.execute(
-                "INSERT INTO meta (path, inode, device, updated_at, vpath) VALUES (?, ?, ?, ?, ?)",
-                (path_str, inode, device, _now(), vpath_str),
+                "INSERT INTO meta (path, inode, device, updated_at, vpath, job_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (path_str, inode, device, _now(), vpath_str, job_id),
             )
         else:
             conn.execute(
-                "UPDATE meta SET vpath = ?, updated_at = ? WHERE path = ?",
-                (vpath_str, _now(), path_str),
+                "UPDATE meta SET vpath = ?, updated_at = ?, job_id = ? WHERE path = ?",
+                (vpath_str, _now(), job_id, path_str),
             )
         conn.commit()
     finally:
         conn.close()
+
+
+def generate_commands(
+    db_path: Path,
+    job_id: str | None = None,
+) -> list[dict]:
+    """
+    Generate filesystem commands to materialize pending vpath changes. No execution.
+    Returns list of { op, src, dst, job_id }.
+    job_id: if set, only changes with this job_id; if None, all pending (job_id="all" in API).
+    Order: deeper paths first (children before parents) so parent moves don't include moved children.
+    """
+    conn = _conn(db_path)
+    try:
+        if job_id and job_id != "all":
+            cur = conn.execute(
+                "SELECT path, vpath, job_id FROM meta WHERE vpath IS NOT NULL AND job_id = ?",
+                (job_id,),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT path, vpath, job_id FROM meta WHERE vpath IS NOT NULL",
+            )
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+    result = []
+    for path_val, vpath_val, jid in rows:
+        if not path_val or not vpath_val:
+            continue
+        src = _path_key(path_val)
+        dst = str(_scope_key(vpath_val))
+        if src == dst:
+            continue
+        result.append({
+            "op": "mv",
+            "src": src,
+            "dst": dst,
+            "job_id": jid,
+        })
+    # Deeper paths first (longer path string = more segments)
+    result.sort(key=lambda c: (-len(c["src"]), c["src"]))
+    return result
 
 
 def get_entries_by_vpath_parent(db_path: Path, parent_path: str | Path) -> list[dict]:

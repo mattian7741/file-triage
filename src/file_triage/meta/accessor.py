@@ -111,8 +111,12 @@ class MetaAccessor:
     def add_virtual_folder(self, path: str | Path) -> str:
         return db.add_virtual_folder(self._db_path, path)
 
-    def set_vpath(self, path: str | Path, vpath: str | None) -> None:
-        db.set_vpath(self._db_path, path, vpath)
+    def set_vpath(self, path: str | Path, vpath: str | None, job_id: str | None = None) -> None:
+        db.set_vpath(self._db_path, path, vpath, job_id)
+
+    def generate_commands(self, job_id: str | None = None) -> list[dict]:
+        """Generate filesystem commands to materialize pending vpath changes. No execution."""
+        return db.generate_commands(self._db_path, job_id)
 
     @property
     def db_path(self) -> Path:

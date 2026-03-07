@@ -61,8 +61,17 @@
   var lastViewDataLeft = null;
   var lastViewDataRight = null;
   var previewSelectedPath = null;
+  var currentJobId = null;  // UUID for grouping moves; null until first use or persisted
 
   var pendingRenameTimeout = null;
+
+  function generateJobId() {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0, v = c === "x" ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
 
   var STORAGE_KEY = "file-triage-explorer-state";
 
@@ -97,6 +106,7 @@
       currentTag: currentTag,
       isTagSearchView: isTagSearchView,
       currentSearchMode: currentSearchMode,
+      currentJobId: currentJobId,
     };
   }
 
@@ -131,10 +141,21 @@
     if (state.currentTag !== undefined) currentTag = state.currentTag;
     if (typeof state.isTagSearchView === "boolean") isTagSearchView = state.isTagSearchView;
     if (state.currentSearchMode === "matches" || state.currentSearchMode === "contains") currentSearchMode = state.currentSearchMode;
+    if (typeof state.currentJobId === "string" && state.currentJobId) currentJobId = state.currentJobId;
   }
 
   function api(path) {
     return path.startsWith("http") ? path : "/api/" + path;
+  }
+
+  /** Call move API with current job_id. Returns fetch promise. */
+  function apiMove(path, vpath) {
+    if (!currentJobId) currentJobId = generateJobId();
+    return fetch(api("move"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: path, vpath: vpath || "", job_id: currentJobId }),
+    });
   }
 
   function hideTagsParam() {
@@ -1499,6 +1520,8 @@
     if (consoleBodyEl) consoleBodyEl.innerHTML = "";
   }
 
+  var jobRowsExpanded = new Set();  // job_id keys; when not in set, row is collapsed
+
   /** Build union of moved items under either pane scope (recursive) and render in CHANGES pane. */
   function refreshChangesPane() {
     if (!changesBodyEl) return;
@@ -1518,23 +1541,56 @@
           changesBodyEl.innerHTML = "<span class=\"changes-empty\">No moved items under current folder scopes.</span>";
           return;
         }
-        var html = "<table class=\"changes-table\"><thead><tr><th class=\"changes-th-source\">Source</th><th class=\"changes-th-target\">Target</th><th class=\"changes-th-action\"></th></tr></thead><tbody>";
+        var byJob = {};
         lines.forEach(function (line) {
-          var pathAttr = (line.path || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-          var vpathAttr = (line.vpath || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-          html += "<tr><td class=\"change-path-red\" title=\"" + pathAttr + "\">" + escapeHtml(line.path) + "</td><td class=\"change-path-blue\" title=\"" + vpathAttr + "\">" + escapeHtml(line.vpath) + "</td><td class=\"changes-action-cell\"><button type=\"button\" class=\"btn-restore btn-restore-change\" data-path=\"" + (line.path || "").replace(/"/g, "&quot;") + "\" title=\"Restore (clear vpath)\" aria-label=\"Restore\">\u21A9</button></td></tr>";
+          var jid = (line.job_id && String(line.job_id).trim()) || "__unassigned__";
+          if (!byJob[jid]) byJob[jid] = [];
+          byJob[jid].push(line);
         });
-        html += "</tbody></table>";
+        var jobOrder = Object.keys(byJob).sort(function (a, b) {
+          if (a === "__unassigned__") return 1;
+          if (b === "__unassigned__") return -1;
+          return a.localeCompare(b);
+        });
+        if (jobRowsExpanded.size === 0) jobOrder.forEach(function (j) { jobRowsExpanded.add(j); });
+        var html = "<table class=\"changes-table\"><thead><tr><th class=\"changes-th-source\">Source</th><th class=\"changes-th-target\">Target</th><th class=\"changes-th-action\"></th></tr></thead>";
+        jobOrder.forEach(function (jid) {
+          var changes = byJob[jid];
+          var label = jid === "__unassigned__" ? "Unassigned" : (jid.length >= 8 ? jid.slice(0, 8) : jid);
+          var expanded = jobRowsExpanded.has(jid);
+          html += "<tbody class=\"job-tbody" + (expanded ? "" : " job-collapsed") + "\" data-job-id=\"" + escapeHtml(jid).replace(/"/g, "&quot;") + "\">";
+          html += "<tr class=\"job-header-row\"><td colspan=\"3\"><span class=\"job-toggle\" aria-label=\"" + (expanded ? "Collapse" : "Expand") + "\">" + (expanded ? "\u25BC" : "\u25B6") + "</span> " + escapeHtml(label) + " (" + changes.length + ")</td></tr>";
+          changes.forEach(function (line) {
+            var pathAttr = (line.path || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+            var vpathAttr = (line.vpath || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+            html += "<tr class=\"job-change-row\"><td class=\"change-path-red\" title=\"" + pathAttr + "\">" + escapeHtml(line.path) + "</td><td class=\"change-path-blue\" title=\"" + vpathAttr + "\">" + escapeHtml(line.vpath) + "</td><td class=\"changes-action-cell\"><button type=\"button\" class=\"btn-restore btn-restore-change\" data-path=\"" + (line.path || "").replace(/"/g, "&quot;") + "\" title=\"Restore (clear vpath)\" aria-label=\"Restore\">\u21A9</button></td></tr>";
+          });
+          html += "</tbody>";
+        });
+        html += "</table>";
         changesBodyEl.innerHTML = html;
+        changesBodyEl.querySelectorAll(".job-header-row").forEach(function (row) {
+          row.addEventListener("click", function () {
+            var tbody = row.closest("tbody.job-tbody");
+            if (!tbody) return;
+            var jid = tbody.getAttribute("data-job-id");
+            if (!jid) return;
+            if (jobRowsExpanded.has(jid)) {
+              jobRowsExpanded.delete(jid);
+            } else {
+              jobRowsExpanded.add(jid);
+            }
+            tbody.classList.toggle("job-collapsed", !jobRowsExpanded.has(jid));
+            var toggle = row.querySelector(".job-toggle");
+            if (toggle) toggle.textContent = jobRowsExpanded.has(jid) ? "\u25BC" : "\u25B6";
+          });
+        });
         changesBodyEl.querySelectorAll(".btn-restore-change").forEach(function (btn) {
-          btn.addEventListener("click", function () {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
             var path = btn.getAttribute("data-path");
             if (!path) return;
-            fetch(api("move"), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ path: path, vpath: "" }),
-            })
+            apiMove(path, "")
               .then(function (r) {
                 if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -1681,11 +1737,7 @@
       }
       var path = row.dataset.path;
       var newVpath = (listingPath() === "/" ? "/" : listingPath() + "/") + newName;
-      fetch(api("move"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: path, vpath: newVpath }),
-      })
+      apiMove(path, newVpath)
         .then(function (r) {
           if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2162,11 +2214,7 @@
         var displayPath = (row && row.dataset.vpath) ? row.dataset.vpath : path;
         var newVpath = "__VTRASH/" + (displayPath.charAt(0) === "/" ? displayPath.slice(1) : displayPath);
         if (newVpath === "__VTRASH/") newVpath = "__VTRASH/" + path;
-        fetch(api("move"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: path, vpath: newVpath }),
-        })
+        apiMove(path, newVpath)
           .then(function (r) {
             if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2185,11 +2233,7 @@
         e.preventDefault();
         e.stopPropagation();
         var path = restoreBtn.dataset.path;
-        fetch(api("move"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: path, vpath: "" }),
-        })
+        apiMove(path, "")
           .then(function (r) {
             if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2318,11 +2362,7 @@
       var targetVpath = row.dataset.vpath || targetPath;
       var name = path.split("/").pop() || path.split("\\\\").pop() || path;
       var vpath = (targetVpath === "/" || !targetVpath) ? "/" + name : targetVpath + "/" + name;
-      fetch(api("move"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: path, vpath: vpath }),
-      })
+      apiMove(path, vpath)
         .then(function (r) {
           if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2390,11 +2430,7 @@
       if (scope.length > path.length && (scope.startsWith(path + "/") || scope.startsWith(path + "\\"))) return;
       var name = path.split("/").pop() || path.split("\\\\").pop() || path;
       var vpath = (scope === "/" || !scope) ? "/" + name : scope.replace(/\/$/, "") + "/" + name;
-      fetch(api("move"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: path, vpath: vpath }),
-      })
+      apiMove(path, vpath)
         .then(function (r) {
           if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2460,11 +2496,7 @@
           var displayPath = selected.dataset.vpath || path;
           var newVpath = "__VTRASH/" + (displayPath.charAt(0) === "/" ? displayPath.slice(1) : displayPath);
           if (newVpath === "__VTRASH/") newVpath = "__VTRASH/" + path;
-          fetch(api("move"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ path: path, vpath: newVpath }),
-          })
+          apiMove(path, newVpath)
             .then(function (r) {
               if (!r.ok) return r.json().then(function (d) {
             var msg = (d.error && d.error.message) || d.error || r.statusText;
@@ -2588,6 +2620,15 @@
     btnClearSelectionEl.addEventListener("click", clearSelection);
   }
 
+  var btnNewJobEl = document.getElementById("btnNewJob");
+  if (btnNewJobEl) {
+    btnNewJobEl.addEventListener("click", function () {
+      currentJobId = generateJobId();
+      saveStateDebounced();
+      refreshChangesPane();
+    });
+  }
+
   if (hideTrashCheckboxEl) {
     showTrashed = !!hideTrashCheckboxEl.checked;
     hideTrashCheckboxEl.addEventListener("change", function () {
@@ -2644,6 +2685,7 @@
       if (roots.length) {
         var state = getPersistedState();
         applyPersistedState(state);
+        if (!currentJobId) currentJobId = generateJobId();
         currentPath = currentPathLeft || currentPath;
         if (hideTrashCheckboxEl) hideTrashCheckboxEl.checked = showTrashed;
         if (showNullTagsCheckboxEl) showNullTagsCheckboxEl.checked = showNullTags;

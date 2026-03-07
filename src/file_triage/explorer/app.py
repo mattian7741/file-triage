@@ -754,8 +754,9 @@ def create_app(
             if vpath_str and not vpath_str.startswith("__VTRASH/"):
                 if not is_path_allowed(Path(vpath_str), roots):
                     return error_response("VPATH_NOT_ALLOWED", "vpath not allowed", 403)
+            job_id = (data.get("job_id") or "").strip() or None
             try:
-                _meta.set_vpath(path_raw, vpath_str)
+                _meta.set_vpath(path_raw, vpath_str, job_id)
             except ValueError as e:
                 _log.warning("Move conflict: %s", e)
                 return error_response("CONFLICT", "Conflict (e.g. destination exists)", 409)

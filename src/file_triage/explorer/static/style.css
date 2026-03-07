@@ -841,6 +841,10 @@ body {
 }
 
 .changes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 600;
@@ -849,6 +853,12 @@ body {
   color: #6e6e73;
   border-bottom: 1px solid #e8e8ed;
   flex-shrink: 0;
+}
+
+.changes-header .btn-new-job {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 2px 8px;
 }
 
 .changes-body {
@@ -919,6 +929,29 @@ body {
 .changes-body .changes-empty {
   color: #6e6e73;
   font-style: italic;
+}
+
+.job-header-row {
+  cursor: pointer;
+  background: #ebebed;
+  font-weight: 600;
+  color: #6e6e73;
+  user-select: none;
+}
+
+.job-header-row:hover {
+  background: #e0e0e2;
+}
+
+.job-toggle {
+  display: inline-block;
+  width: 1em;
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.job-tbody.job-collapsed .job-change-row {
+  display: none;
 }
 
 .dropzone {

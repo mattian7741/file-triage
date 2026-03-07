@@ -599,13 +599,19 @@ def get_moved_in_scopes(
     scope_right: str | Path | None,
 ) -> list[dict]:
     """Return meta rows with non-null vpath where path or vpath is under scope_left or scope_right.
-    Each dict: path, vpath. Used for CHANGES pane (union of both folder scopes)."""
+    Each dict: path, vpath, job_id (nullable). Used for CHANGES pane (union of both folder scopes)."""
     if not db_path or not Path(db_path).exists():
         return []
     conn = _conn(Path(db_path))
     try:
-        cur = conn.execute("SELECT path, vpath FROM meta WHERE vpath IS NOT NULL")
-        rows = [{"path": row[0], "vpath": row[1]} for row in cur.fetchall() if row[1]]
+        cur = conn.execute(
+            "SELECT path, vpath, job_id FROM meta WHERE vpath IS NOT NULL"
+        )
+        rows = [
+            {"path": row[0], "vpath": row[1], "job_id": row[2] if len(row) > 2 else None}
+            for row in cur.fetchall()
+            if row[1]
+        ]
     finally:
         conn.close()
     result = []

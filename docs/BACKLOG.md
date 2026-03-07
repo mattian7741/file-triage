@@ -139,7 +139,21 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 8 — Background search jobs
+## Iteration 8 — Job management UI (changes pane)
+
+**Goal:** Add UI/UX for grouping vpath changes into jobs. Users can start a new job to group subsequent changes; the CHANGES pane shows changes grouped under collapsible job rows.
+
+- [x] **"New job" button:** When clicked, advances the current job ID. All changes since the previous "New job" (or app start) remain under the previous job; subsequent moves are associated with the new job. Frontend generates job IDs (e.g. UUID); no backend "create job" endpoint required.
+- [x] **Pass job_id on move:** When performing a move (set_vpath), the frontend passes the current job_id to the API. The move endpoint accepts optional job_id and forwards to set_vpath.
+- [x] **API: changes include job_id:** Extend `/api/changes` (and `get_moved_in_scopes`) to return `job_id` per change so the UI can group by job. Changes with null job_id appear under "Unassigned" or equivalent.
+- [x] **Collapsible job rows in CHANGES pane:** Each job is a line item that expands/collapses. Expanding a job reveals its changes (Source → Target rows with restore buttons). Job row shows job label (e.g. "Job 1", timestamp, or truncated ID). Preserve existing per-change restore button behavior.
+- [x] **Initial state:** On load, frontend has a current job ID (generated or from persisted state). Changes made before any "New job" are grouped under that job.
+
+**Deliverables:** "New job" button; job_id passed on moves; changes API returns job_id; collapsible job rows in CHANGES pane. No execution of generated commands in this iteration.
+
+---
+
+## Iteration 9 — Background search jobs
 
 **Goal:** Run search as a background process so the user can navigate away without losing context. Search jobs are persistent, trackable, and viewable (complete or partial). Stopping a search stops the action but leaves results under that job.
 
@@ -153,7 +167,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 9 — SRS: regex_path search type
+## Iteration 10 — SRS: regex_path search type
 
 **Goal:** One additional search type (regex on path) so SRS is not only tag-search; result set is model-level; show_trashed affects display only.
 
@@ -165,7 +179,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 10 — Toggle placement (scope-local vs global)
+## Iteration 11 — Toggle placement (scope-local vs global)
 
 **Goal:** Scope-local toggles (e.g. show_negation) appear in the pane whose scope they affect; global toggles (show_trashed, hidden_tag_set) remain in shared UI. Optional / lower priority.
 
@@ -178,7 +192,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 11 — Testing and contract stability
+## Iteration 12 — Testing and contract stability
 
 **Goal:** Tests lock spec-aligned behavior and prevent regression. Can run in parallel or after Iterations 1–5.
 
@@ -190,7 +204,7 @@ Gap analysis between **current implementation** and **specification documents** 
 
 ---
 
-## Iteration 12 — Module and file organization (optional)
+## Iteration 13 — Module and file organization (optional)
 
 **Goal:** Clear module boundaries; one primary concern per file where practical; reduced overload.
 
@@ -218,11 +232,12 @@ Iteration 5 (parent-only inheritance)           ← behavior change, medium radi
 Iteration 6 (null → negation naming)           ← API/types/docs
     ↓
 Iteration 7 (Apply: generate commands)          ← new capability; after 6 to keep meta stable
-Iteration 8 (background search jobs)            ← search UX: persistent jobs, click to view, stop leaves partial
-Iteration 9 (regex_path search)                 ← new feature
-Iteration 10 (toggle placement)                 ← UI reorg, optional
-Iteration 11 (testing)                           ← can run in parallel after 2–4
-Iteration 12 (module organization)               ← optional, after 2
+Iteration 8 (job management UI)                 ← changes pane: New job button, collapsible job rows
+Iteration 9 (background search jobs)            ← search UX: persistent jobs, click to view, stop leaves partial
+Iteration 10 (regex_path search)                 ← new feature
+Iteration 11 (toggle placement)                 ← UI reorg, optional
+Iteration 12 (testing)                           ← can run in parallel after 2–4
+Iteration 13 (module organization)               ← optional, after 2
 ```
 
 **Midstream rule:** If already in progress on an iteration (e.g. Iteration 1), finish it; then do the **Deployment iteration** before starting Iteration 2.

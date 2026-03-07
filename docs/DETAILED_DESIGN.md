@@ -35,8 +35,9 @@ This project is a desktop app that runs inside Electron. We use the **canonical 
 **Implemented (Deployment iteration):**
 - **Electron shell:** `electron/main.js` spawns the Flask backend (`python3 -m file_triage.cli explorer --port 5001`), waits for server ready, opens `BrowserWindow` to `http://127.0.0.1:5001`. On window close, backend process is killed. Dev: `npm start`; PYTHONPATH set to project `src` when not packaged.
 - **Build:** `package.json` + `electron-builder`; `npm run build` produces macOS `.dmg` and `.zip`. Python app is copied into app via `extraResources` (src → resources/app/src, pyproject.toml → resources/app) so the packaged app can run `python3 -m file_triage.cli` from the bundle (system Python required unless a bundled Python is added later).
-- **CI/CD:** `.github/workflows/build-release.yml` runs on release publish: checkout, setup Python + Node, `pip install -e .`, `npm ci`, `npm run build`, upload `dist/*.dmg` and `dist/*.zip` to the GitHub Release. Release URL is the stable URL for the Cask.
-- **Cask:** Separate tap repo `mattian7741/homebrew-tap`. Install with `brew tap mattian7741/tap` then `brew install --cask file-triage`. Update the Cask (version, sha256) in the tap repo when releasing.
+- **CI/CD:** `.github/workflows/build-release.yml` runs on **push to main** or **release published**. On push to main: creates tag `v{version}` from `package.json`, builds, uploads to release, and updates the homebrew-tap Cask (if `HOMEBREW_TAP_TOKEN` is set). **Flow:** bump version in `package.json` → merge to main → CI builds, creates release, updates Cask → `brew update && brew upgrade --cask file-triage`.
+- **Cask:** Separate tap repo `mattian7741/homebrew-tap`. Install with `brew tap mattian7741/tap` then `brew install --cask file-triage`. Cask is auto-updated by CI when `HOMEBREW_TAP_TOKEN` secret exists (PAT with `repo` scope, write access to homebrew-tap).
+- **HOMEBREW_TAP_TOKEN setup (one-time):** In the file-triage repo → Settings → Secrets and variables → Actions → New repository secret. Name: `HOMEBREW_TAP_TOKEN`. Value: a GitHub PAT with `repo` scope that can push to `mattian7741/homebrew-tap`. Without it, the Cask update job is skipped; you can still merge and get releases, but you must update the Cask manually.
 
 **How to verify the hello-world MVP (prerequisite gate)**
 

@@ -1,7 +1,11 @@
-# Build and publish macOS app on release. Artifact is uploaded to the release for Cask URL.
+# Build and publish macOS app. Triggers: push to main, or release published.
+# On push to main: creates tag/release, builds, uploads, updates homebrew-tap Cask.
+# Requires: HOMEBREW_TAP_TOKEN secret (PAT with repo scope, write access to homebrew-tap).
 name: Build and release
 
 on:
+  push:
+    branches: [main]
   release:
     types: [published]
 
@@ -10,8 +14,37 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      sha256: ${{ steps.sha256.outputs.sha256 }}
+      asset_name: ${{ steps.sha256.outputs.name }}
+      release_tag: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', steps.version.outputs.version) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || 'main' }}
+
+      - name: Get version
+        id: version
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag (push to main only)
+        if: github.event_name == 'push'
+        run: |
+          git fetch --tags
+          TAG="v${{ steps.version.outputs.version }}"
+          if git rev-parse "$TAG" 2>/dev/null; then
+            echo "Tag $TAG exists — bump version in package.json before merging"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,11 +66,67 @@ jobs:
       - name: Build macOS app
         run: npm run build
 
+      - name: Get DMG path and compute sha256
+        id: sha256
+        run: |
+          DMG=$(ls dist/*arm64*.dmg 2>/dev/null || ls dist/*.dmg 2>/dev/null | head -1)
+          if [ -z "$DMG" ]; then
+            DMG=$(ls dist/*.dmg 2>/dev/null | head -1)
+          fi
+          [ -n "$DMG" ] || (echo "No DMG found" && exit 1)
+          HASH=$(shasum -a 256 "$DMG" | awk '{print $1}')
+          echo "sha256=$HASH" >> $GITHUB_OUTPUT
+          echo "name=$(basename "$DMG")" >> $GITHUB_OUTPUT
+
       - name: Upload artifact to release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', steps.version.outputs.version) }}
           files: |
             dist/*.dmg
             dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-cask:
+    needs: build-mac
+    runs-on: ubuntu-latest
+    if: secrets.HOMEBREW_TAP_TOKEN != ''
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: mattian7741/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Cask
+        run: |
+          VERSION="${{ needs.build-mac.outputs.version }}"
+          SHA256="${{ needs.build-mac.outputs.sha256 }}"
+          ASSET="${{ needs.build-mac.outputs.asset_name }}"
+          RELEASE_TAG="${{ needs.build-mac.outputs.release_tag }}"
+          # URL-encode spaces in asset filename for GitHub release URL
+          ASSET_URL=$(echo "$ASSET" | sed 's/ /%20/g')
+          CASK="homebrew-tap/Casks/file-triage.rb"
+          URL="https://github.com/mattian7741/file-triage/releases/download/${RELEASE_TAG}/${ASSET_URL}"
+          sed -i.bak -e "s|version \".*\"|version \"${VERSION}\"|" \
+                    -e "s|sha256 \".*\"|sha256 \"${SHA256}\"|" \
+                    -e "s|url \".*\"|url \"${URL}\"|" \
+                    "$CASK"
+          rm -f "${CASK}.bak"
+        env:
+          ASSET: ${{ needs.build-mac.outputs.asset_name }}
+
+      - name: Commit and push
+        run: |
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/file-triage.rb
+          if git diff --staged --quiet; then
+            echo "No changes to Cask"
+          else
+            git commit -m "file-triage ${{ needs.build-mac.outputs.version }}"
+            git push
+          fi

@@ -1368,7 +1368,10 @@
     const rowClass = (e.is_dir ? "row-dir" : "") + (e.virtual ? " row-virtual" : "") +
       (e.display_style === "original" ? " row-original" : "") + (e.display_style === "moved_here" ? " row-moved-here" : "") +
       (e.vpath ? " row-has-vpath" : "");
-    const isEmpty = (e.is_dir && e.empty) || (!e.is_dir && (e.size === 0 || e.size === undefined));
+    // View-level empty (EXPLORER_RULES §9): folder = no visible children or entry.empty when not loaded; file = size 0 or (vpath && !showTrashed)
+    const isEmpty = e.is_dir
+      ? (e.empty || false)  // folder: use model-level empty (we don't have filtered children here)
+      : ((e.size === 0 || e.size === undefined) || (!!e.vpath && !showTrashed));
     const rowEmptyClass = isEmpty ? " row-empty" : "";
     const icon = e.is_dir ? "📁" : "📄";
     const explicitTags = e.tags || [];

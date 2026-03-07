@@ -169,9 +169,12 @@ For a given tag name, an item is in exactly one state: **soft**, **hard**, **neg
 
 ## 9. Empty (files and folders)
 
+**Model vs view:** The API returns **model-level** `empty` per entry (no show_trashed in API). The frontend applies **view-level** empty at render time: folder = no visible children after visibility filter (or `entry.empty` when children not loaded); file = size 0 or (has vpath and show_trashed is off).
+
 ### 9.1 File
 
-- **Empty** = size 0 (bytes). Display-only; no hierarchy.
+- **Model:** Empty = size 0 (bytes). Display-only; no hierarchy.
+- **View:** Empty = size 0 **or** (has vpath and show_trashed is off). When show_trashed is off, a moved/trashed file is considered empty at its original location.
 
 ### 9.2 Folder (model-level)
 

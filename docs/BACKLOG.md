@@ -74,10 +74,10 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** Align empty semantics with spec: folder empty and file empty depend on show_trashed where specified; view-level empty = after visibility filter.
 
-- [ ] Contract or EXPLORER_RULES documents **model empty** (what API returns) vs **view empty** (after visibility): folder has no visible children; file empty = size 0 or (has vpath and show_trashed is off).
-- [ ] Backend continues to return one consistent model-level `empty` per entry (no show_trashed in API for this iteration unless required).
-- [ ] Frontend empty display: folder = no visible children after visibility filter (or entry.empty when no children loaded); file = (size === 0) or (entry.vpath && !showTrashed). Applied wherever row-empty or empty state is shown.
-- [ ] If "empty in view" is later exposed by API (e.g. with show_trashed param), document as future option; do not change default response shape in this iteration.
+- [x] Contract or EXPLORER_RULES documents **model empty** (what API returns) vs **view empty** (after visibility): folder has no visible children; file empty = size 0 or (has vpath and show_trashed is off).
+- [x] Backend continues to return one consistent model-level `empty` per entry (no show_trashed in API for this iteration unless required).
+- [x] Frontend empty display: folder = no visible children after visibility filter (or entry.empty when no children loaded); file = (size === 0) or (entry.vpath && !showTrashed). Applied wherever row-empty or empty state is shown.
+- [x] If "empty in view" is later exposed by API (e.g. with show_trashed param), document as future option; do not change default response shape in this iteration.
 
 **Deliverables:** Spec-aligned empty semantics documented; frontend empty display uses view-level rule for file and folder.
 

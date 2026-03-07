@@ -137,7 +137,9 @@ Each item in `entries` (listing, tagged, tag-search) has the same logical shape:
 - `vpath`, `display_style` (when moved/virtual; effective path = vpath ?? path)
 - `has_direct_match` (contains mode only, optional)
 
-Exact keys may vary by endpoint; this is the conceptual contract for “one file or folder in a list”.
+Exact keys may vary by endpoint; this is the conceptual contract for "one file or folder in a list".
+
+**Empty (model vs view):** The API returns **model-level** `empty` per entry (no `show_trashed` param). The frontend applies **view-level** empty at render time: folder = no visible children after visibility filter (or `entry.empty` when children not loaded); file = size 0 or (has vpath and show_trashed is off). See EXPLORER_RULES §9. *Future option:* the API may expose view-level empty via a `show_trashed` query param; not in this iteration.
 
 ---
 

@@ -87,9 +87,9 @@ Gap analysis between **current implementation** and **specification documents** 
 
 **Goal:** When tag scope is in "containers" mode (showing folders that contain the tag), dropping an item onto the tag pane is a no-op (spec: move_in when contains_mode → no_op).
 
-- [ ] Current scope and mode (e.g. tag scope + containers) are known when handling drop.
-- [ ] Drop onto the tag pane when in tag scope and containers mode: no add-tag call, no vpath change. Optional: brief message that move-in is not available in containers mode.
-- [ ] Verification: tag search in contains mode, drag item to tag pane → no tag added, no move.
+- [x] Current scope and mode (e.g. tag scope + containers) are known when handling drop.
+- [x] Drop onto the tag pane when in tag scope and containers mode: no add-tag call, no vpath change. Optional: brief message that move-in is not available in containers mode.
+- [x] Verification: tag search in contains mode, drag item to tag pane → no tag added, no move.
 
 **Deliverables:** Contains-mode drop = no-op; no backend change required.
 

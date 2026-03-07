@@ -697,9 +697,12 @@
       if (currentTag && !isTagSearchView) {
         dropzoneLeftEl.textContent = "Drop here to add tag " + currentTag;
         dropzoneLeftEl.title = "Drop here to add tag " + currentTag;
+      } else if (isTagSearchView && currentSearchMode === "contains") {
+        dropzoneLeftEl.textContent = "Containers mode — drop not available";
+        dropzoneLeftEl.title = "Move-in is not available in containers mode";
       } else if (isTagSearchView) {
-        dropzoneLeftEl.textContent = "Search results — drop not supported";
-        dropzoneLeftEl.title = "Search results are read-only";
+        dropzoneLeftEl.textContent = "Drop here to add tag " + (currentTag || "");
+        dropzoneLeftEl.title = "Drop here to add tag " + (currentTag || "");
       } else {
         dropzoneLeftEl.textContent = "Drop here to move into this folder";
         dropzoneLeftEl.title = "Drop here to move into this folder";
@@ -2319,8 +2322,8 @@
       dropzoneEl.classList.remove("drag-over");
       var path = e.dataTransfer.getData("text/plain");
       if (!path) return;
-      if (pane === "left" && isTagSearchView) return;
-      if (pane === "left" && currentTag && !isTagSearchView) {
+      if (pane === "left" && isTagSearchView && currentSearchMode === "contains") return;
+      if (pane === "left" && currentTag && (!isTagSearchView || currentSearchMode === "matches")) {
         fetch(api("tags/batch"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
